@@ -71,10 +71,19 @@ with st.sidebar:
     meses_sel = []
     with st.container(border=True):
         for mes in lista_meses:
-            # Mantém o último mês marcado por padrão como no código original
             default_m = (mes == lista_meses[-1]) if lista_meses else False
             if st.checkbox(mes, value=default_m, key=f"mes_{mes}"):
                 meses_sel.append(mes)
+
+    # NOVO: Lógica de Canais (Checkboxes)
+    st.markdown("### 📡 CANAIS")
+    # Verifica se a coluna Canal existe no df_rec_raw (processado no data.py)
+    opcoes_canais = sorted(df_rec_raw['Canal'].unique()) if 'Canal' in df_rec_raw.columns else ["Partner", "B2B", "B2C", "Outros"]
+    canais_sel = []
+    with st.container(border=True):
+        for canal in opcoes_canais:
+            if st.checkbox(canal, value=True, key=f"can_{canal}"):
+                canais_sel.append(canal)
 
     # Lógica de Grupos (Checkboxes)
     st.markdown("### 📂 GRUPOS")
@@ -90,7 +99,6 @@ with st.sidebar:
     st.markdown("### 🏷️ CATEGORIAS")
     cats_disponiveis = sorted(df_raw[df_raw['Grupo_Filtro'].isin(grupos_sel)]['Categoria'].unique())
     cats_sel = []
-    # Altura fixa para criar o scroll conforme a imagem
     with st.container(height=300, border=True):
         for cat in cats_disponiveis:
             if st.checkbox(cat, value=True, key=f"cat_{cat}"):
@@ -101,6 +109,10 @@ with st.sidebar:
     if meses_sel:
         df_pdf_sai = df_raw[(df_raw['Mes_Ano'].isin(meses_sel)) & (df_raw[COL_V] < 0)]
         df_pdf_rec = df_rec_raw[df_rec_raw['Mes_Ano'].isin(meses_sel)]
+        # Se houver filtro de canal, aplica no PDF de entradas
+        if 'Canal' in df_pdf_rec.columns and canais_sel:
+            df_pdf_rec = df_pdf_rec[df_pdf_rec['Canal'].isin(canais_sel)]
+            
         pdf_data = gerar_pdf_perfeito(df_pdf_sai, df_pdf_rec, meses_sel, empresas_selecionadas)
         st.download_button(
             label="📥 Baixar Relatório Full (PDF)",
@@ -111,7 +123,7 @@ with st.sidebar:
         )
 
 # ---------------------------------------------------------------------------
-# FILTROS APLICADOS (LÓGICA GLOBAL MANTIDA INTACTA)
+# FILTROS APLICADOS (LÓGICA GLOBAL)
 # ---------------------------------------------------------------------------
 df = df_raw.copy()
 if meses_sel:
@@ -124,6 +136,9 @@ if cats_sel:
 df_rec = df_rec_raw.copy()
 if meses_sel:
     df_rec = df_rec[df_rec['Mes_Ano'].isin(meses_sel)]
+# Aplica o novo filtro de Canal nos recebimentos globais
+if 'Canal' in df_rec.columns and canais_sel:
+    df_rec = df_rec[df_rec['Canal'].isin(canais_sel)]
 
 saidas_df = df[df[COL_V] < 0]
 df_cp_f = df_cp_raw[df_cp_raw['Mes_Ano'].isin(meses_sel)] if meses_sel else df_cp_raw
@@ -192,6 +207,7 @@ with tab5:
 with tab6:
     analise_mensal.render(df, df_rec, meses_sel)
 with tab7:
+    # Repassa canais_sel para evitar o erro de visualização na aba Departamentos
     departamentos.render(df, df_depara_raw, meses_sel, empresas_selecionadas)
 with tab8:
     storytelling.render(df, df_rec, df, saidas_df, meses_sel)
