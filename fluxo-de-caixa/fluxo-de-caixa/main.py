@@ -75,7 +75,7 @@ with st.sidebar:
             if st.checkbox(mes, value=default_m, key=f"mes_{mes}"):
                 meses_sel.append(mes)
 
-    # NOVO: Lógica de Canais (Checkboxes)
+    # Lógica de Canais (Checkboxes)
     st.markdown("### 📡 CANAIS")
     opcoes_canais = sorted(df_rec_raw['Canal'].unique()) if 'Canal' in df_rec_raw.columns else ["Partner", "B2B", "B2C", "Outros"]
     canais_sel = []
