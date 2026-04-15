@@ -24,22 +24,6 @@ def _atribuir_grupo(cat) -> str:
                 return grupo
     return "Outros"
 
-# Nova função auxiliar para identificar o canal de vendas
-def _identificar_canal(nome) -> str:
-    if pd.isna(nome):
-        return "Outros"
-    nome_upper = str(nome).strip().upper()
-    
-    # Lógica de mapeamento por palavras-chave
-    if "PARTNER" in nome_upper:
-        return "Partner"
-    if "B2B" in nome_upper:
-        return "B2B"
-    if "B2C" in nome_upper:
-        return "B2C"
-    
-    return "Outros"
-
 
 @st.cache_data(ttl=600)
 def load_and_process(empresas_selecionadas: tuple):
@@ -86,11 +70,6 @@ def load_and_process(empresas_selecionadas: tuple):
 
     df_rec = pd.concat(list_r, ignore_index=True).dropna(subset=['Data de pagamento'])
     df_rec['Mes_Ano'] = df_rec['Data de pagamento'].dt.strftime('%m/%Y')
-    
-    # Identificando o Canal nos Recebimentos (df_rec)
-    # Busca na coluna de Nome ou Favorecido para classificar como Partner, B2B ou B2C
-    col_identificacao = next((c for c in ['Nome', 'Favorecido', 'Cliente'] if c in df_rec.columns), df_rec.columns[0])
-    df_rec['Canal'] = df_rec[col_identificacao].apply(_identificar_canal)
 
     df_cp_all = pd.concat(list_cp, ignore_index=True)
     df_cp_all['Mes_Ano'] = df_cp_all['Data de pagamento'].dt.strftime('%m/%Y')
