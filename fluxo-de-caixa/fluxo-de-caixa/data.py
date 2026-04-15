@@ -32,7 +32,7 @@ def load_and_process(empresas_selecionadas: tuple):
     df_depara_globus = pd.DataFrame()
 
     for emp in empresas_selecionadas:
-        # Saídas
+        # Carregamento de Saídas
         df_s = pd.read_csv(URLS[emp]["s"])
         df_s.columns = df_s.columns.str.strip()
         df_s[COL_V] = df_s[COL_V].apply(_clean_val)
@@ -40,7 +40,7 @@ def load_and_process(empresas_selecionadas: tuple):
         df_s['Empresa'] = emp
         list_s.append(df_s)
 
-        # Recebidos
+        # Carregamento de Recebidos
         df_r = pd.read_csv(URLS[emp]["r"])
         df_r.columns = df_r.columns.str.strip()
         df_r[COL_V] = df_r[COL_V].apply(_clean_val)
@@ -48,7 +48,7 @@ def load_and_process(empresas_selecionadas: tuple):
         df_r['Empresa'] = emp
         list_r.append(df_r)
 
-        # Contas a Pagar
+        # Carregamento de Contas a Pagar
         df_cp = pd.read_csv(URLS[emp]["cp"])
         df_cp.columns = df_cp.columns.str.strip()
         if COL_V in df_cp.columns:
@@ -60,40 +60,45 @@ def load_and_process(empresas_selecionadas: tuple):
         df_cp['Empresa'] = emp
         list_cp.append(df_cp)
 
+        # Carregamento do Depara (Apenas Globus)
         if emp == "Globus":
-            df_depara_globus = pd.read_csv(URLS[emp]["depara"])
-            df_depara_globus.columns = df_depara_globus.columns.str.strip()
+            try:
+                df_depara_globus = pd.read_csv(URLS[emp]["depara"])
+                df_depara_globus.columns = df_depara_globus.columns.str.strip()
+            except Exception:
+                df_depara_globus = pd.DataFrame()
 
-    # Concatenar saídas
+    # Processamento Final de Saídas
     df_saidas = pd.concat(list_s, ignore_index=True).dropna(subset=['Data de pagamento'])
     df_saidas['Mes_Ano'] = df_saidas['Data de pagamento'].dt.strftime('%m/%Y')
     df_saidas['Grupo_Filtro'] = df_saidas['Categoria'].apply(_atribuir_grupo)
 
-    # --- LÓGICA DE IMPACTO TOTAL (GARANTIR QUE TODOS OS VALORES APAREÇAM) ---
+    # --- LÓGICA DE IMPACTO TOTAL (DEPARTAMENTOS) ---
     if not df_depara_globus.empty and 'Centro de Custo' in df_saidas.columns:
-        # 1. Limpeza do Centro de Custo para bater com o depara (pega só os números)
+        # 1. Extraímos apenas os números (ex: "10030 BACKOFFICE..." vira 10030)
         df_saidas['CC_Merge'] = df_saidas['Centro de Custo'].astype(str).str.extract(r'(\d+)').astype(float)
         
-        # 2. Identifica qual coluna de destino usar do seu depara (SETOR ou DEPARTAMENTO)
+        # 2. Define a coluna alvo (SETOR ou DEPARTAMENTO)
         col_destino = 'SETOR' if 'SETOR' in df_depara_globus.columns else 'DEPARTAMENTO'
         
-        if 'Centro de Custo' in df_depara_globus.columns:
-            depara_aux = df_depara_globus[['Centro de Custo', col_destino]].copy()
-            depara_aux.columns = ['CC_Merge', 'Dept_Tmp']
-            depara_aux['CC_Merge'] = depara_aux['CC_Merge'].astype(float)
-            depara_aux = depara_aux.drop_duplicates(subset=['CC_Merge'])
+        # 3. Prepara tabela auxiliar de depara
+        depara_aux = df_depara_globus[['Centro de Custo', col_destino]].copy()
+        depara_aux.columns = ['CC_Merge', 'Dept_Tmp']
+        depara_aux['CC_Merge'] = pd.to_numeric(depara_aux['CC_Merge'], errors='coerce')
+        depara_aux = depara_aux.dropna(subset=['CC_Merge']).drop_duplicates(subset=['CC_Merge'])
 
-            # 3. Merge LEFT: mantém todas as linhas das saídas, sem exceção
-            df_saidas = pd.merge(df_saidas, depara_aux, on='CC_Merge', how='left')
-            
-            # 4. O PULO DO GATO: Se ficou vazio (NaN), vira 'BACKOFFICE'
-            df_saidas['Departamento'] = df_saidas['Dept_Tmp'].fillna('BACKOFFICE')
-        else:
-            df_saidas['Departamento'] = 'BACKOFFICE'
+        # 4. Merge LEFT (Mantém 100% das linhas do financeiro)
+        df_saidas = pd.merge(df_saidas, depara_aux, on='CC_Merge', how='left')
+        
+        # 5. Se não localizou no depara (NaN), joga para BACKOFFICE
+        df_saidas['Departamento'] = df_saidas['Dept_Tmp'].fillna('BACKOFFICE')
+        
+        # Garante que textos vazios também virem BACKOFFICE
+        df_saidas.loc[df_saidas['Departamento'].astype(str).str.strip() == '', 'Departamento'] = 'BACKOFFICE'
     else:
-        # Se não tiver depara, joga tudo em BACKOFFICE para não perder os dados
+        # Fallback total: se falhar, nada some, tudo vira BACKOFFICE
         df_saidas['Departamento'] = 'BACKOFFICE'
-    # -----------------------------------------------------------------------
+    # -----------------------------------------------
 
     df_rec = pd.concat(list_r, ignore_index=True).dropna(subset=['Data de pagamento'])
     df_rec['Mes_Ano'] = df_rec['Data de pagamento'].dt.strftime('%m/%Y')
