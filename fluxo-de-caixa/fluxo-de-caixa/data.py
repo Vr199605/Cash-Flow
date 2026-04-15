@@ -68,6 +68,15 @@ def load_and_process(empresas_selecionadas: tuple):
     df_saidas['Mes_Ano'] = df_saidas['Data de pagamento'].dt.strftime('%m/%Y')
     df_saidas['Grupo_Filtro'] = df_saidas['Categoria'].apply(_atribuir_grupo)
 
+    # --- NOVA LÓGICA DEPARA DEPARTAMENTOS ---
+    # Garantimos que se o depara existir, aplicamos ele para não perder valores na aba de departamentos
+    if not df_depara_globus.empty and 'Centro de Custo' in df_saidas.columns:
+        # Fazemos um merge à esquerda para manter todas as linhas de saídas
+        df_saidas = pd.merge(df_saidas, df_depara_globus[['Centro de Custo', 'Departamento']], on='Centro de Custo', how='left')
+        # O que não encontrar no depara, vira 'Backoffice'
+        df_saidas['Departamento'] = df_saidas['Departamento'].fillna('Backoffice')
+    # ----------------------------------------
+
     df_rec = pd.concat(list_r, ignore_index=True).dropna(subset=['Data de pagamento'])
     df_rec['Mes_Ano'] = df_rec['Data de pagamento'].dt.strftime('%m/%Y')
 
