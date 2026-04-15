@@ -20,7 +20,7 @@ from tabs import (
     contas_pagar,
     dados,
     departamentos,
-    lucratividade,
+    # lucratividade removida conforme solicitado
     pareto,
     pareto_nomes,
     recebidos,
@@ -149,41 +149,41 @@ for idx, row in agrupado_cp.iterrows():
 st.write("---")
 
 # ---------------------------------------------------------------------------
-# ABAS - COMUNICANDO OS FILTROS
+# ABAS - REORDENADAS E RENOMEADAS CONFORME SOLICITADO
 # ---------------------------------------------------------------------------
 (
     tab1, tab2, tab3, tab4, tab5,
-    tab6, tab7, tab8, tab9, tab10, tab11,
+    tab6, tab7, tab8, tab9, tab10,
 ) = st.tabs([
-    "📊 APRESENTAÇÃO", "🔥 CASH BURN", "🎯 PARETO", "📋 DADOS", "💰 RECEBIDOS",
-    "📈 ANÁLISE MENSAL", "💎 LUCRATIVIDADE", "🔍 PARETO NOMES",
-    "📑 CONTAS A PAGAR", "🏢 DEPARTAMENTOS GLOBUS", "🧠 STORYTELLING",
+    "📊 APRESENTAÇÃO", 
+    "💰 PARETO CASH IN", 
+    "🎯 PARETO CASH OUT", 
+    "🔥 CASH BURN", 
+    "📑 CONTAS A PAGAR", 
+    "📈 SALDO CAIXA", 
+    "🏢 DEPT. GLOBUS", 
+    "🧠 STORYTELLING", 
+    "📋 DADOS", 
+    "💰 RECEBIDOS"
 ])
 
 with tab1:
-    # Passamos o df filtrado se a função 'apresentacao' suportar, 
-    # caso contrário, ela usará a lógica interna baseada nas empresas.
     apresentacao.render(empresas_selecionadas, somar_contas_pagar)
 with tab2:
-    cash_burn.render(saidas_df)
+    pareto.render(saidas_df) # Pareto Cash In
 with tab3:
-    pareto.render(saidas_df)
+    pareto_nomes.render(df_rec) # Pareto Cash Out
 with tab4:
-    dados.render(df)
+    cash_burn.render(saidas_df)
 with tab5:
-    recebidos.render(df_rec)
-with tab6:
-    analise_mensal.render(df, df_rec, meses_sel)
-with tab7:
-    lucratividade.render(df, df_rec, saidas_df)
-with tab8:
-    pareto_nomes.render(df_rec)
-with tab9:
-    # Usando o df_cp_f (filtrado por período)
     contas_pagar.render(df_cp_f, meses_sel, empresas_selecionadas)
-with tab10:
-    # Usando o df (já filtrado por Grupo/Categoria/Mês) para Departamentos
+with tab6:
+    analise_mensal.render(df, df_rec, meses_sel) # Saldo Caixa
+with tab7:
     departamentos.render(df, df_depara_raw, meses_sel, empresas_selecionadas)
-with tab11:
-    # Garantindo que o storytelling veja os dados filtrados
+with tab8:
     storytelling.render(df, df_rec, df, saidas_df, meses_sel)
+with tab9:
+    dados.render(df)
+with tab10:
+    recebidos.render(df_rec)
