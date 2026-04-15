@@ -32,6 +32,7 @@ def load_and_process(empresas_selecionadas: tuple):
     df_depara_globus = pd.DataFrame()
 
     for emp in empresas_selecionadas:
+        # Saídas
         df_s = pd.read_csv(URLS[emp]["s"])
         df_s.columns = df_s.columns.str.strip()
         df_s[COL_V] = df_s[COL_V].apply(_clean_val)
@@ -39,6 +40,7 @@ def load_and_process(empresas_selecionadas: tuple):
         df_s['Empresa'] = emp
         list_s.append(df_s)
 
+        # Recebidos
         df_r = pd.read_csv(URLS[emp]["r"])
         df_r.columns = df_r.columns.str.strip()
         df_r[COL_V] = df_r[COL_V].apply(_clean_val)
@@ -46,6 +48,7 @@ def load_and_process(empresas_selecionadas: tuple):
         df_r['Empresa'] = emp
         list_r.append(df_r)
 
+        # Contas a Pagar
         df_cp = pd.read_csv(URLS[emp]["cp"])
         df_cp.columns = df_cp.columns.str.strip()
         if COL_V in df_cp.columns:
@@ -61,32 +64,36 @@ def load_and_process(empresas_selecionadas: tuple):
             df_depara_globus = pd.read_csv(URLS[emp]["depara"])
             df_depara_globus.columns = df_depara_globus.columns.str.strip()
 
-    # Processamento Final de Saídas
+    # Concatenar saídas
     df_saidas = pd.concat(list_s, ignore_index=True).dropna(subset=['Data de pagamento'])
     df_saidas['Mes_Ano'] = df_saidas['Data de pagamento'].dt.strftime('%m/%Y')
     df_saidas['Grupo_Filtro'] = df_saidas['Categoria'].apply(_atribuir_grupo)
 
-    # --- LÓGICA DEPARA DEPARTAMENTOS (BACKOFFICE AUTOMÁTICO) ---
+    # --- LÓGICA DE IMPACTO TOTAL (GARANTIR QUE TODOS OS VALORES APAREÇAM) ---
     if not df_depara_globus.empty and 'Centro de Custo' in df_saidas.columns:
-        # 1. Extraímos apenas os números do Centro de Custo da movimentação (ex: "10000 BACKOFFICE" -> "10000")
-        df_saidas['CC_Limpo'] = df_saidas['Centro de Custo'].astype(str).str.extract(r'(\d+)').astype(float)
+        # 1. Limpeza do Centro de Custo para bater com o depara (pega só os números)
+        df_saidas['CC_Merge'] = df_saidas['Centro de Custo'].astype(str).str.extract(r'(\d+)').astype(float)
         
-        # 2. Preparamos o depara (usando a coluna 'SETOR' da sua imagem como o Departamento)
-        # Ajuste aqui se a coluna do depara for 'SETOR' ou 'DEPARTAMENTO'
-        col_alvo = 'SETOR' if 'SETOR' in df_depara_globus.columns else 'DEPARTAMENTO'
+        # 2. Identifica qual coluna de destino usar do seu depara (SETOR ou DEPARTAMENTO)
+        col_destino = 'SETOR' if 'SETOR' in df_depara_globus.columns else 'DEPARTAMENTO'
         
-        depara_resumo = df_depara_globus[['Centro de Custo', col_alvo]].drop_duplicates()
-        depara_resumo.columns = ['CC_Limpo', 'Departamento_Final']
-        depara_resumo['CC_Limpo'] = depara_resumo['CC_Limpo'].astype(float)
+        if 'Centro de Custo' in df_depara_globus.columns:
+            depara_aux = df_depara_globus[['Centro de Custo', col_destino]].copy()
+            depara_aux.columns = ['CC_Merge', 'Dept_Tmp']
+            depara_aux['CC_Merge'] = depara_aux['CC_Merge'].astype(float)
+            depara_aux = depara_aux.drop_duplicates(subset=['CC_Merge'])
 
-        # 3. Merge
-        df_saidas = pd.merge(df_saidas, depara_resumo, on='CC_Limpo', how='left')
-        
-        # 4. Tudo que não bater, vira Backoffice
-        df_saidas['Departamento'] = df_saidas['Departamento_Final'].fillna('BACKOFFICE')
+            # 3. Merge LEFT: mantém todas as linhas das saídas, sem exceção
+            df_saidas = pd.merge(df_saidas, depara_aux, on='CC_Merge', how='left')
+            
+            # 4. O PULO DO GATO: Se ficou vazio (NaN), vira 'BACKOFFICE'
+            df_saidas['Departamento'] = df_saidas['Dept_Tmp'].fillna('BACKOFFICE')
+        else:
+            df_saidas['Departamento'] = 'BACKOFFICE'
     else:
+        # Se não tiver depara, joga tudo em BACKOFFICE para não perder os dados
         df_saidas['Departamento'] = 'BACKOFFICE'
-    # -----------------------------------------------------------
+    # -----------------------------------------------------------------------
 
     df_rec = pd.concat(list_r, ignore_index=True).dropna(subset=['Data de pagamento'])
     df_rec['Mes_Ano'] = df_rec['Data de pagamento'].dt.strftime('%m/%Y')
