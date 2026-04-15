@@ -52,12 +52,26 @@ def render(df, df_rec, df_geral, saidas_df, meses_sel):
         margin=dict(t=50, b=50), hovermode="x unified"
     )
 
-    # --- 3. INDICADOR DE SAÚDE ---
+    # --- 3. INDICADOR DE SAÚDE (CORREÇÃO DA PONTUAÇÃO) ---
     st.write("---")
-    # Lógica simples de pontuação baseada no saldo e margem
-    pontos_saude = 100 if res_liquido > 0 else 0
-    cor_saude = "#2ecc71" if pontos_saude > 0 else "#ff4b4b"
-    status_saude = "Saudável" if pontos_saude > 0 else "Crítico"
+    
+    # Cálculo dinâmico da pontuação baseado na margem
+    margem_calc = (res_liquido / rec_total) if rec_total > 0 else 0
+    pontos_saude = int(max(0, min(100, margem_calc * 100))) if res_liquido > 0 else 0
+    
+    # Definição de cores e status baseados nos pontos
+    if pontos_saude > 70:
+        cor_saude = "#2ecc71"
+        status_saude = "Excelente"
+        desc_saude = "Operação com margem sólida e custos controlados."
+    elif pontos_saude > 0:
+        cor_saude = "#f1c40f"
+        status_saude = "Atenção"
+        desc_saude = "Margem positiva, porém estreita. Requer monitoramento."
+    else:
+        cor_saude = "#ff4b4b"
+        status_saude = "Crítico"
+        desc_saude = "Recuo em margem líquida, variação de custos e déficit operacional detectado."
 
     col_s1, col_s2 = st.columns([1, 3])
     with col_s1:
@@ -66,9 +80,9 @@ def render(df, df_rec, df_geral, saidas_df, meses_sel):
             <p style="text-align: center; margin-top: 5px; font-size: 10px; color: #aaa;">PONTOS</p>""", unsafe_allow_html=True)
     with col_s2:
         st.markdown(f"<h4 style='color: {cor_saude}; margin-bottom: 0;'>{status_saude}</h4>", unsafe_allow_html=True)
-        st.write("Recuo em margem líquida, variação de custos, concentração de receita e anomalias detectadas." if pontos_saude == 0 else "Operação com margem positiva e custos controlados dentro da previsibilidade.")
+        st.write(desc_saude)
 
-    # --- 4. KPI CARDS (COM A ALTERAÇÃO NO RESULTADO LÍQUIDO) ---
+    # --- 4. KPI CARDS (MANTIDO) ---
     c1, c2, c3, c4 = st.columns(4)
     labels = ["RECEITA TOTAL", "DESPESA TOTAL", "RESULTADO LÍQUIDO", "CUSTO / RECEITA"]
     valores = [rec_total, desp_total, res_liquido, indice_custo]
@@ -93,14 +107,14 @@ def render(df, df_rec, df_geral, saidas_df, meses_sel):
                          <p style="margin:0; font-size: 10px; color: {cor}; font-weight: bold;">● {lab}</p>
                          <h3 style="margin:0; font-size: 18px;">{v_str}</h3></div>""", unsafe_allow_html=True)
 
-    # --- 5. GRÁFICOS INTERATIVOS NA TELA ---
+    # --- 5. GRÁFICOS INTERATIVOS NA TELA (MANTIDO) ---
     st.markdown("#### 📉 Evolução do Fluxo de Caixa")
     st.plotly_chart(fig_flow, use_container_width=True)
 
     st.markdown("#### 🎯 Análise de Pareto — Top 10 Despesas")
     st.plotly_chart(fig_p, use_container_width=True)
 
-    # --- 6. CONCENTRAÇÃO DE RECEITA ---
+    # --- 6. CONCENTRAÇÃO DE RECEITA (MANTIDO) ---
     st.markdown("#### 👁️ Concentração de Receita")
     c_rec1, c_rec2 = st.columns([1, 1])
     with c_rec1:
@@ -121,7 +135,7 @@ def render(df, df_rec, df_geral, saidas_df, meses_sel):
         st.caption("Percentual da receita concentrado nos 3 maiores pagadores.")
         st.success("✅ Baixo Risco: Base de receita diversificada.")
 
-    # --- 7. ESTRUTURA DE CUSTOS ---
+    # --- 7. ESTRUTURA DE CUSTOS (MANTIDO) ---
     st.markdown("#### ⚡ Estrutura de Custos")
     col_e1, col_e2, col_e3 = st.columns(3)
     with col_e1:
@@ -144,7 +158,7 @@ def render(df, df_rec, df_geral, saidas_df, meses_sel):
             st.subheader(f"{prev:.0f}%")
             st.progress(prev/100)
 
-    # --- 8. RESUMO FINAL ---
+    # --- 8. RESUMO FINAL (MANTIDO) ---
     st.markdown(f"""<div style="background-color: #1a1c23; padding: 20px; border-radius: 10px; border-left: 5px solid #ff4b4b; margin-top:20px;">
                 <span style="color: #ff4b4b; font-weight: bold;">📢 RESUMO PARA A DIRETORIA</span><br>
                 No período selecionado, a operação gerou <span style="color:#2ecc71;">{format_brl(rec_total)}</span> em receitas 
