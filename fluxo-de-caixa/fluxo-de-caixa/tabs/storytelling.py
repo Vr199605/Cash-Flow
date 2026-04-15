@@ -37,13 +37,28 @@ def render(df, df_rec, df_geral, saidas_df, meses_sel):
     fig_flow.add_trace(go.Scatter(x=df_m['Mes_Ano'], y=df_m['Saldo'], name='Saldo', line=dict(color='#00D1FF', width=3), marker=dict(size=10)))
     fig_flow.update_layout(template="plotly_dark", barmode='group', height=350, margin=dict(t=20, b=20), hovermode="x unified")
 
-    # --- GRÁFICO PARETO (RESTAURADO/MANTIDO) ---
+    # --- GRÁFICO PARETO (COM CORES SEMÂNTICAS ADICIONADAS) ---
     df_p_data = saidas_df.groupby('Categoria')[COL_V].sum().abs().sort_values(ascending=False).head(10).reset_index()
     total_p = df_p_data[COL_V].sum()
     df_p_data['% Acumulada'] = (df_p_data[COL_V].cumsum() / total_p) * 100
     
+    # Definição de Cores Semânticas baseada na lista de pontuais (lista_p)
+    def define_cor_pareto(cat):
+        if any(p in cat.upper() for p in lista_p):
+            return "#ff4b4b" # Vermelho para Pontual/Variável (Onde há espaço para corte)
+        return "#00D1FF"     # Azul padrão para Recorrente/Fixo
+
+    df_p_data['Cor'] = df_p_data['Categoria'].apply(define_cor_pareto)
+
     fig_p = go.Figure()
-    fig_p.add_trace(go.Bar(x=df_p_data['Categoria'], y=df_p_data[COL_V], name='Valor (R$)', marker_color='#00D1FF', yaxis='y1'))
+    # Usando a coluna 'Cor' para as barras
+    fig_p.add_trace(go.Bar(
+        x=df_p_data['Categoria'], 
+        y=df_p_data[COL_V], 
+        name='Valor (R$)', 
+        marker_color=df_p_data['Cor'], # Alteração aqui
+        yaxis='y1'
+    ))
     fig_p.add_trace(go.Scatter(x=df_p_data['Categoria'], y=df_p_data['% Acumulada'], name='% Acumulada', line=dict(color='#f1c40f', width=3), yaxis='y2'))
     fig_p.update_layout(
         template="plotly_dark", height=400, showlegend=True,
@@ -52,26 +67,18 @@ def render(df, df_rec, df_geral, saidas_df, meses_sel):
         margin=dict(t=50, b=50), hovermode="x unified"
     )
 
-    # --- 3. INDICADOR DE SAÚDE (CORREÇÃO DA PONTUAÇÃO) ---
+    # --- 3. INDICADOR DE SAÚDE ---
     st.write("---")
-    
     # Cálculo dinâmico da pontuação baseado na margem
     margem_calc = (res_liquido / rec_total) if rec_total > 0 else 0
     pontos_saude = int(max(0, min(100, margem_calc * 100))) if res_liquido > 0 else 0
     
-    # Definição de cores e status baseados nos pontos
     if pontos_saude > 70:
-        cor_saude = "#2ecc71"
-        status_saude = "Excelente"
-        desc_saude = "Operação com margem sólida e custos controlados."
+        cor_saude = "#2ecc71"; status_saude = "Excelente"; desc_saude = "Operação com margem sólida e custos controlados."
     elif pontos_saude > 0:
-        cor_saude = "#f1c40f"
-        status_saude = "Atenção"
-        desc_saude = "Margem positiva, porém estreita. Requer monitoramento."
+        cor_saude = "#f1c40f"; status_saude = "Atenção"; desc_saude = "Margem positiva, porém estreita. Requer monitoramento."
     else:
-        cor_saude = "#ff4b4b"
-        status_saude = "Crítico"
-        desc_saude = "Recuo em margem líquida, variação de custos e déficit operacional detectado."
+        cor_saude = "#ff4b4b"; status_saude = "Crítico"; desc_saude = "Recuo em margem líquida, variação de custos e déficit operacional detectado."
 
     col_s1, col_s2 = st.columns([1, 3])
     with col_s1:
@@ -93,10 +100,8 @@ def render(df, df_rec, df_geral, saidas_df, meses_sel):
             v_color = "#ff4b4b" if val < 0 else "#2ecc71"
             v_border = "#ff4b4b" if val < 0 else "#95a5a6"
             margem = (val / rec_total * 100) if rec_total > 0 else 0
-            
             observacao_html = f"""<p style='margin:0; font-size: 11px; color: #aaa; margin-top: 5px;'>
                                 <span style='color: #e74c3c;'>➘</span> Margem de {margem:.1f}% sobre a receita</p>""" if val < 0 else ""
-
             col.markdown(f"""<div style="border: 1px solid {v_border}; padding: 15px; border-radius: 10px;">
                          <p style="margin:0; font-size: 10px; color: {v_color}; font-weight: bold;">● {lab}</p>
                          <h3 style="margin:0; font-size: 18px; color: {v_color};">{format_brl(val)}</h3>
@@ -140,27 +145,55 @@ def render(df, df_rec, df_geral, saidas_df, meses_sel):
     col_e1, col_e2, col_e3 = st.columns(3)
     with col_e1:
         with st.container(border=True):
-            st.caption("RECORRENTES")
-            st.subheader(format_brl(v_reco))
+            st.caption("RECORRENTES"); st.subheader(format_brl(v_reco))
             st.markdown(f"<span style='color:#555; font-size:12px;'>{df_recorrentes['Categoria'].nunique()} categorias</span>", unsafe_allow_html=True)
-            with st.expander("▼ Ver categorias"):
-                st.write(", ".join(sorted(df_recorrentes['Categoria'].unique())))
+            with st.expander("▼ Ver categorias"): st.write(", ".join(sorted(df_recorrentes['Categoria'].unique())))
     with col_e2:
         with st.container(border=True):
-            st.caption("PONTUAIS")
-            st.subheader(format_brl(v_pont))
+            st.caption("PONTUAIS"); st.subheader(format_brl(v_pont))
             st.markdown(f"<span style='color:#555; font-size:12px;'>{df_pontuais['Categoria'].nunique()} categorias</span>", unsafe_allow_html=True)
-            with st.expander("▼ Ver categorias"):
-                st.write(", ".join(sorted(df_pontuais['Categoria'].unique())))
+            with st.expander("▼ Ver categorias"): st.write(", ".join(sorted(df_pontuais['Categoria'].unique())))
     with col_e3:
         with st.container(border=True):
-            st.caption("PREVISIBILIDADE")
-            st.subheader(f"{prev:.0f}%")
-            st.progress(prev/100)
+            st.caption("PREVISIBILIDADE"); st.subheader(f"{prev:.0f}%"); st.progress(prev/100)
 
-    # --- 8. RESUMO FINAL (MANTIDO) ---
+    # --- 8. RESUMO FINAL E GRÁFICO WATERFALL (ADICIONADO NO FINAL) ---
     st.markdown(f"""<div style="background-color: #1a1c23; padding: 20px; border-radius: 10px; border-left: 5px solid #ff4b4b; margin-top:20px;">
                 <span style="color: #ff4b4b; font-weight: bold;">📢 RESUMO PARA A DIRETORIA</span><br>
                 No período selecionado, a operação gerou <span style="color:#2ecc71;">{format_brl(rec_total)}</span> em receitas 
                 e consumiu <span style="color:#e74c3c;">{format_brl(desp_total)}</span> em despesas, resultando em um 
                 déficit de <span style="color:#e74c3c;">{format_brl(abs(res_liquido))}</span>.</div>""", unsafe_allow_html=True)
+
+    st.write("")
+    st.markdown("#### 📉 Gráfico de Cascata — Consumo da Receita")
+    
+    # Preparação dos dados para o Waterfall
+    df_waterfall = saidas_df.groupby('Categoria')[COL_V].sum().abs().sort_values(ascending=False)
+    
+    # Pegamos as 5 maiores despesas e agrupamos o resto em "Outros"
+    top_5_despesas_indices = df_waterfall.head(5).index
+    df_top_5 = df_waterfall.loc[top_5_despesas_indices]
+    valor_outros = df_waterfall.drop(top_5_despesas_indices).sum()
+    
+    # Construção das listas para o gráfico
+    wf_x = ["Receita Total"] + list(df_top_5.index) + ["Outros"] + ["Resultado Líquido"]
+    wf_y = [rec_total] + list(-df_top_5) + [-valor_outros] + [res_liquido]
+    wf_measure = ["relative"] + ["relative"] * (len(df_top_5) + 1) + ["total"]
+    wf_text = [format_brl(val) for val in wf_y]
+
+    fig_wf = go.Figure(go.Waterfall(
+        name="Fluxo", 
+        orientation="v",
+        measure=wf_measure,
+        x=wf_x,
+        y=wf_y,
+        text=wf_text,
+        textposition="outside",
+        connector={"line": {"color": "rgb(63, 63, 63)"}},
+        increasing={"marker": {"color": "#2ecc71"}},
+        decreasing={"marker": {"color": "#e74c3c"}},
+        totals={"marker": {"color": "#95a5a6"}}
+    ))
+    
+    fig_wf.update_layout(template="plotly_dark", height=450, margin=dict(t=50, b=50), showlegend=False)
+    st.plotly_chart(fig_wf, use_container_width=True)
