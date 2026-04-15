@@ -18,14 +18,13 @@ def render(df_raw, df_depara_raw, meses_sel: list, empresas_selecionadas: list):
         st.info("Selecione a empresa 'Globus' para visualizar a análise por Setor e Departamento.")
         return
 
-    # --- FILTRO DE CANAIS (DENTRO DA ABA) ---
-    canais_disponiveis = ["Partner", "B2B", "B2C"]
-    canais_sel = st.multiselect("🎯 Filtrar por Canal:", options=canais_disponiveis, default=canais_disponiveis)
-
     df_globus = df_raw[(df_raw['Empresa'] == "Globus") & (df_raw[COL_V] < 0)].copy()
     
-    # Aplicando o filtro de Canais
-    if canais_sel:
+    # --- NOVO FILTRO DE CANAIS ADICIONADO ---
+    canais_disponiveis = sorted(df_globus['Canal'].dropna().unique()) if 'Canal' in df_globus.columns else ["Partner", "B2B", "B2C"]
+    canais_sel = st.multiselect("🎯 Filtrar por Canal:", options=canais_disponiveis, default=canais_disponiveis)
+
+    if canais_sel and 'Canal' in df_globus.columns:
         df_globus = df_globus[df_globus['Canal'].isin(canais_sel)].copy()
 
     if meses_sel:
@@ -37,6 +36,7 @@ def render(df_raw, df_depara_raw, meses_sel: list, empresas_selecionadas: list):
 
     df_merged = pd.merge(df_globus, depara, on='CC_CLEAN', how='left')
 
+    # --- FILTROS DE SETOR E DEPARTAMENTO MANTIDOS EXATAMENTE COMO ESTAVAM ---
     setores = sorted(df_merged['SETOR'].dropna().unique())
     setor_sel = st.multiselect("🔍 Filtrar por Setor:", options=setores, default=setores)
 
