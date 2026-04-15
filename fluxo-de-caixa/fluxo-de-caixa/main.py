@@ -109,18 +109,17 @@ saidas_df = df[df[COL_V] < 0]
 # ---------------------------------------------------------------------------
 # TRATAMENTO DEPARA DEPARTAMENTOS (BACKOFFICE DEFAULT)
 # ---------------------------------------------------------------------------
-# Criamos uma versão do df_raw que garante que categorias sem depara caiam em Backoffice
-df_dep_processado = df_raw.copy()
+df_dep_processado = df.copy() # Usando o df já filtrado pelo sidebar
 if 'Categoria' in df_dep_processado.columns and df_depara_raw is not None:
-    # Merge com o depara para trazer os departamentos
+    # Merge com o depara para trazer os setores
     df_dep_processado = df_dep_processado.merge(df_depara_raw, on='Categoria', how='left', suffixes=('', '_depara'))
     
-    # Se a coluna de Departamento vier vazia (NaN) após o merge, alocamos em 'Backoffice'
-    if 'Departamento' in df_dep_processado.columns:
-        df_dep_processado['Departamento'] = df_dep_processado['Departamento'].fillna('Backoffice')
+    # O erro indica que a aba espera a coluna 'SETOR'
+    if 'SETOR' in df_dep_processado.columns:
+        df_dep_processado['SETOR'] = df_dep_processado['SETOR'].fillna('Backoffice')
     else:
-        # Caso a coluna nem exista no df_depara_raw por algum motivo
-        df_dep_processado['Departamento'] = 'Backoffice'
+        # Força a criação da coluna caso o merge não a traga
+        df_dep_processado['SETOR'] = 'Backoffice'
 
 # ---------------------------------------------------------------------------
 # HEADER PRINCIPAL
@@ -195,7 +194,7 @@ with tab8:
 with tab9:
     contas_pagar.render(df_cp_raw, meses_sel, empresas_selecionadas)
 with tab10:
-    # Enviamos o df_dep_processado que já alocou os órfãos no Backoffice
+    # Usando o processado que agora tem a coluna 'SETOR' preenchida
     departamentos.render(df_dep_processado, df_depara_raw, meses_sel, empresas_selecionadas)
 with tab11:
     storytelling.render(df, df_rec, df_raw, saidas_df, meses_sel)
