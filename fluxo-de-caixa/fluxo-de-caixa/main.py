@@ -10,6 +10,7 @@ if not check_password():
 
 # Importações após autenticação
 import io  # noqa: E402
+
 from config import COL_V, CSS, format_brl
 from data import load_and_process
 from pdf_report import gerar_pdf_perfeito
@@ -49,6 +50,7 @@ with st.sidebar:
 
     st.write("---")
 
+    # load_and_process exige hashable — converte para tuple
     df_raw, df_rec_raw, df_cp_raw, df_depara_raw = load_and_process(tuple(empresas_selecionadas))
 
     if somar_contas_pagar:
@@ -88,7 +90,7 @@ with st.sidebar:
         )
 
 # ---------------------------------------------------------------------------
-# FILTROS APLICADOS (LÓGICA GLOBAL)
+# FILTROS APLICADOS
 # ---------------------------------------------------------------------------
 df = df_raw.copy()
 if meses_sel:
@@ -104,8 +106,21 @@ if meses_sel:
 
 saidas_df = df[df[COL_V] < 0]
 
-# Filtro específico para Contas a Pagar (respeitando meses e empresas)
-df_cp_f = df_cp_raw[df_cp_raw['Mes_Ano'].isin(meses_sel)] if meses_sel else df_cp_raw
+# ---------------------------------------------------------------------------
+# TRATAMENTO DEPARA DEPARTAMENTOS (BACKOFFICE DEFAULT)
+# ---------------------------------------------------------------------------
+# Criamos uma versão do df_raw que garante que categorias sem depara caiam em Backoffice
+df_dep_processado = df_raw.copy()
+if 'Categoria' in df_dep_processado.columns and df_depara_raw is not None:
+    # Merge com o depara para trazer os departamentos
+    df_dep_processado = df_dep_processado.merge(df_depara_raw, on='Categoria', how='left', suffixes=('', '_depara'))
+    
+    # Se a coluna de Departamento vier vazia (NaN) após o merge, alocamos em 'Backoffice'
+    if 'Departamento' in df_dep_processado.columns:
+        df_dep_processado['Departamento'] = df_dep_processado['Departamento'].fillna('Backoffice')
+    else:
+        # Caso a coluna nem exista no df_depara_raw por algum motivo
+        df_dep_processado['Departamento'] = 'Backoffice'
 
 # ---------------------------------------------------------------------------
 # HEADER PRINCIPAL
@@ -137,7 +152,8 @@ for i, grupo in enumerate(grupos_sel):
 
 st.write("")
 
-# Métricas de contas a pagar baseadas no dataframe filtrado df_cp_f
+# Métricas de contas a pagar
+df_cp_f = df_cp_raw[df_cp_raw['Mes_Ano'].isin(meses_sel)] if meses_sel else df_cp_raw
 val_cp_total = df_cp_f[COL_V].sum()
 agrupado_cp = df_cp_f.groupby('Grupo_Filtro')[COL_V].sum().abs().reset_index()
 
@@ -149,7 +165,7 @@ for idx, row in agrupado_cp.iterrows():
 st.write("---")
 
 # ---------------------------------------------------------------------------
-# ABAS - COMUNICANDO OS FILTROS
+# ABAS
 # ---------------------------------------------------------------------------
 (
     tab1, tab2, tab3, tab4, tab5,
@@ -161,8 +177,6 @@ st.write("---")
 ])
 
 with tab1:
-    # Passamos o df filtrado se a função 'apresentacao' suportar, 
-    # caso contrário, ela usará a lógica interna baseada nas empresas.
     apresentacao.render(empresas_selecionadas, somar_contas_pagar)
 with tab2:
     cash_burn.render(saidas_df)
@@ -179,11 +193,9 @@ with tab7:
 with tab8:
     pareto_nomes.render(df_rec)
 with tab9:
-    # Usando o df_cp_f (filtrado por período)
-    contas_pagar.render(df_cp_f, meses_sel, empresas_selecionadas)
+    contas_pagar.render(df_cp_raw, meses_sel, empresas_selecionadas)
 with tab10:
-    # Usando o df (já filtrado por Grupo/Categoria/Mês) para Departamentos
-    departamentos.render(df, df_depara_raw, meses_sel, empresas_selecionadas)
+    # Enviamos o df_dep_processado que já alocou os órfãos no Backoffice
+    departamentos.render(df_dep_processado, df_depara_raw, meses_sel, empresas_selecionadas)
 with tab11:
-    # Garantindo que o storytelling veja os dados filtrados
-    storytelling.render(df, df_rec, df, saidas_df, meses_sel)
+    storytelling.render(df, df_rec, df_raw, saidas_df, meses_sel)
