@@ -37,26 +37,24 @@ def render(df, df_rec, df_geral, saidas_df, meses_sel):
     fig_flow.add_trace(go.Scatter(x=df_m['Mes_Ano'], y=df_m['Saldo'], name='Saldo', line=dict(color='#00D1FF', width=3), marker=dict(size=10)))
     fig_flow.update_layout(template="plotly_dark", barmode='group', height=350, margin=dict(t=20, b=20), hovermode="x unified")
 
-    # --- GRÁFICO PARETO (COM CORES SEMÂNTICAS ADICIONADAS) ---
+    # --- GRÁFICO PARETO (MANTIDO) ---
     df_p_data = saidas_df.groupby('Categoria')[COL_V].sum().abs().sort_values(ascending=False).head(10).reset_index()
     total_p = df_p_data[COL_V].sum()
     df_p_data['% Acumulada'] = (df_p_data[COL_V].cumsum() / total_p) * 100
     
-    # Definição de Cores Semânticas baseada na lista de pontuais (lista_p)
     def define_cor_pareto(cat):
         if any(p in cat.upper() for p in lista_p):
-            return "#ff4b4b" # Vermelho para Pontual/Variável (Onde há espaço para corte)
-        return "#00D1FF"     # Azul padrão para Recorrente/Fixo
+            return "#ff4b4b"
+        return "#00D1FF"
 
     df_p_data['Cor'] = df_p_data['Categoria'].apply(define_cor_pareto)
 
     fig_p = go.Figure()
-    # Usando a coluna 'Cor' para as barras
     fig_p.add_trace(go.Bar(
         x=df_p_data['Categoria'], 
         y=df_p_data[COL_V], 
         name='Valor (R$)', 
-        marker_color=df_p_data['Cor'], # Alteração aqui
+        marker_color=df_p_data['Cor'],
         yaxis='y1'
     ))
     fig_p.add_trace(go.Scatter(x=df_p_data['Categoria'], y=df_p_data['% Acumulada'], name='% Acumulada', line=dict(color='#f1c40f', width=3), yaxis='y2'))
@@ -69,7 +67,6 @@ def render(df, df_rec, df_geral, saidas_df, meses_sel):
 
     # --- 3. INDICADOR DE SAÚDE ---
     st.write("---")
-    # Cálculo dinâmico da pontuação baseado na margem
     margem_calc = (res_liquido / rec_total) if rec_total > 0 else 0
     pontos_saude = int(max(0, min(100, margem_calc * 100))) if res_liquido > 0 else 0
     
@@ -157,7 +154,7 @@ def render(df, df_rec, df_geral, saidas_df, meses_sel):
         with st.container(border=True):
             st.caption("PREVISIBILIDADE"); st.subheader(f"{prev:.0f}%"); st.progress(prev/100)
 
-    # --- 8. RESUMO FINAL E GRÁFICO WATERFALL (ADICIONADO NO FINAL) ---
+    # --- 8. RESUMO FINAL E GRÁFICO WATERFALL ---
     st.markdown(f"""<div style="background-color: #1a1c23; padding: 20px; border-radius: 10px; border-left: 5px solid #ff4b4b; margin-top:20px;">
                 <span style="color: #ff4b4b; font-weight: bold;">📢 RESUMO PARA A DIRETORIA</span><br>
                 No período selecionado, a operação gerou <span style="color:#2ecc71;">{format_brl(rec_total)}</span> em receitas 
@@ -167,33 +164,55 @@ def render(df, df_rec, df_geral, saidas_df, meses_sel):
     st.write("")
     st.markdown("#### 📉 Gráfico de Cascata — Consumo da Receita")
     
-    # Preparação dos dados para o Waterfall
     df_waterfall = saidas_df.groupby('Categoria')[COL_V].sum().abs().sort_values(ascending=False)
-    
-    # Pegamos as 5 maiores despesas e agrupamos o resto em "Outros"
     top_5_despesas_indices = df_waterfall.head(5).index
     df_top_5 = df_waterfall.loc[top_5_despesas_indices]
     valor_outros = df_waterfall.drop(top_5_despesas_indices).sum()
     
-    # Construção das listas para o gráfico
     wf_x = ["Receita Total"] + list(df_top_5.index) + ["Outros"] + ["Resultado Líquido"]
     wf_y = [rec_total] + list(-df_top_5) + [-valor_outros] + [res_liquido]
     wf_measure = ["relative"] + ["relative"] * (len(df_top_5) + 1) + ["total"]
     wf_text = [format_brl(val) for val in wf_y]
 
     fig_wf = go.Figure(go.Waterfall(
-        name="Fluxo", 
+        name="Fluxo de Caixa", 
         orientation="v",
         measure=wf_measure,
         x=wf_x,
         y=wf_y,
         text=wf_text,
         textposition="outside",
-        connector={"line": {"color": "rgb(63, 63, 63)"}},
+        connector={"line": {"color": "rgba(255, 255, 255, 0.2)"}},
         increasing={"marker": {"color": "#2ecc71"}},
         decreasing={"marker": {"color": "#e74c3c"}},
-        totals={"marker": {"color": "#95a5a6"}}
+        totals={"marker": {"color": "#00D1FF"}} # Azul padrão igual ao Pareto
     ))
     
-    fig_wf.update_layout(template="plotly_dark", height=450, margin=dict(t=50, b=50), showlegend=False)
+    # Padronização igual ao Pareto
+    fig_wf.update_layout(
+        template="plotly_dark", 
+        height=400, 
+        margin=dict(t=50, b=50), 
+        showlegend=False,
+        hovermode="x unified"
+    )
     st.plotly_chart(fig_wf, use_container_width=True)
+
+    # --- EXPLICAÇÃO DETALHADA DO WATERFALL ---
+    with st.container(border=True):
+        st.markdown("""
+        <div style="padding: 10px;">
+            <h5 style="color: #00D1FF; margin-bottom: 15px;">🔍 Entendendo a Análise de Cascata</h5>
+            <p style="font-size: 14px; line-height: 1.6;">
+                Este gráfico ilustra a <b>jornada do seu capital</b> desde a entrada bruta até o saldo final. Diferente de um gráfico comum, ele isola o impacto individual de cada grande grupo de custo:
+            </p>
+            <ul style="font-size: 13px; color: #ccc;">
+                <li><b style="color: #2ecc71;">Coluna Verde (Início):</b> Representa 100% da sua Receita Gerada no período.</li>
+                <li><b style="color: #e74c3c;">Degraus Vermelhos:</b> Mostram exatamente quanto cada categoria "subtraiu" da sua receita, em ordem de relevância.</li>
+                <li><b style="color: #00D1FF;">Coluna Azul (Final):</b> É o que restou (Resultado Líquido). Se estiver abaixo do nível zero, indica que as despesas consumiram mais do que a receita disponível.</li>
+            </ul>
+            <p style="font-size: 13px; background-color: rgba(0, 209, 255, 0.05); padding: 10px; border-radius: 5px; border-left: 3px solid #00D1FF;">
+                <b>Insight Estratégico:</b> Utilize esta visão para identificar qual "degrau" está sendo mais agressivo na erosão da sua margem líquida.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
