@@ -54,14 +54,19 @@ def render(df, df_rec, df_geral, saidas_df, meses_sel):
 
     # --- 3. INDICADOR DE SAÚDE ---
     st.write("---")
+    # Lógica simples de pontuação baseada no saldo e margem
+    pontos_saude = 100 if res_liquido > 0 else 0
+    cor_saude = "#2ecc71" if pontos_saude > 0 else "#ff4b4b"
+    status_saude = "Saudável" if pontos_saude > 0 else "Crítico"
+
     col_s1, col_s2 = st.columns([1, 3])
     with col_s1:
-        st.markdown(f"""<div style="text-align: center; border: 2px solid #555; border-radius: 50%; width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; margin: auto;">
-            <span style="font-size: 24px; font-weight: bold; color: #ff4b4b;">0</span></div>
+        st.markdown(f"""<div style="text-align: center; border: 2px solid {cor_saude}; border-radius: 50%; width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; margin: auto;">
+            <span style="font-size: 24px; font-weight: bold; color: {cor_saude};">{pontos_saude}</span></div>
             <p style="text-align: center; margin-top: 5px; font-size: 10px; color: #aaa;">PONTOS</p>""", unsafe_allow_html=True)
     with col_s2:
-        st.markdown("<h4 style='color: #ff4b4b; margin-bottom: 0;'>Crítico</h4>", unsafe_allow_html=True)
-        st.write("Recuo em margem líquida, variação de custos, concentração de receita e anomalias detectadas.")
+        st.markdown(f"<h4 style='color: {cor_saude}; margin-bottom: 0;'>{status_saude}</h4>", unsafe_allow_html=True)
+        st.write("Recuo em margem líquida, variação de custos, concentração de receita e anomalias detectadas." if pontos_saude == 0 else "Operação com margem positiva e custos controlados dentro da previsibilidade.")
 
     # --- 4. KPI CARDS (COM A ALTERAÇÃO NO RESULTADO LÍQUIDO) ---
     c1, c2, c3, c4 = st.columns(4)
