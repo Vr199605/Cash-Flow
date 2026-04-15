@@ -37,7 +37,7 @@ def render(df, df_rec, df_geral, saidas_df, meses_sel):
     fig_flow.add_trace(go.Scatter(x=df_m['Mes_Ano'], y=df_m['Saldo'], name='Saldo', line=dict(color='#00D1FF', width=3), marker=dict(size=10)))
     fig_flow.update_layout(template="plotly_dark", barmode='group', height=350, margin=dict(t=20, b=20), hovermode="x unified")
 
-    # --- GRÁFICO PARETO (MANTIDO) ---
+    # --- GRÁFICO PARETO (MANTIDO COM CORES SEMÂNTICAS) ---
     df_p_data = saidas_df.groupby('Categoria')[COL_V].sum().abs().sort_values(ascending=False).head(10).reset_index()
     total_p = df_p_data[COL_V].sum()
     df_p_data['% Acumulada'] = (df_p_data[COL_V].cumsum() / total_p) * 100
@@ -50,13 +50,7 @@ def render(df, df_rec, df_geral, saidas_df, meses_sel):
     df_p_data['Cor'] = df_p_data['Categoria'].apply(define_cor_pareto)
 
     fig_p = go.Figure()
-    fig_p.add_trace(go.Bar(
-        x=df_p_data['Categoria'], 
-        y=df_p_data[COL_V], 
-        name='Valor (R$)', 
-        marker_color=df_p_data['Cor'],
-        yaxis='y1'
-    ))
+    fig_p.add_trace(go.Bar(x=df_p_data['Categoria'], y=df_p_data[COL_V], name='Valor (R$)', marker_color=df_p_data['Cor'], yaxis='y1'))
     fig_p.add_trace(go.Scatter(x=df_p_data['Categoria'], y=df_p_data['% Acumulada'], name='% Acumulada', line=dict(color='#f1c40f', width=3), yaxis='y2'))
     fig_p.update_layout(
         template="plotly_dark", height=400, showlegend=True,
@@ -109,6 +103,23 @@ def render(df, df_rec, df_geral, saidas_df, meses_sel):
                          <p style="margin:0; font-size: 10px; color: {cor}; font-weight: bold;">● {lab}</p>
                          <h3 style="margin:0; font-size: 18px;">{v_str}</h3></div>""", unsafe_allow_html=True)
 
+    # --- NOVO: 4.1 DECOMPOSIÇÃO DE MARGEM (EBITDA SIMULADO) ---
+    st.write("")
+    with st.container(border=True):
+        st.markdown("##### 📊 Eficiência Operacional (EBITDA Simulado)")
+        m_col1, m_col2, m_col3 = st.columns(3)
+        
+        # Cálculos de Margem de Contribuição
+        margem_contribuicao = rec_total - v_pont
+        percentual_mc = (margem_contribuicao / rec_total * 100) if rec_total > 0 else 0
+        ebitda_margem = (res_liquido / rec_total * 100) if rec_total > 0 else 0
+
+        m_col1.metric("Margem de Contribuição", format_brl(margem_contribuicao), f"{percentual_mc:.1f}%")
+        m_col2.metric("Custos Fixos (Recorrentes)", format_brl(v_reco), delta_color="off")
+        m_col3.metric("Margem Líquida (EBITDA %)", f"{ebitda_margem:.1f}%", delta=f"{ebitda_margem:.1f}%", help="Resultado final sobre a receita bruta.")
+        
+        st.caption("A Margem de Contribuição indica quanto sobra da receita após pagar os custos variáveis (pontuais) para cobrir os custos fixos.")
+
     # --- 5. GRÁFICOS INTERATIVOS NA TELA (MANTIDO) ---
     st.markdown("#### 📉 Evolução do Fluxo de Caixa")
     st.plotly_chart(fig_flow, use_container_width=True)
@@ -154,7 +165,7 @@ def render(df, df_rec, df_geral, saidas_df, meses_sel):
         with st.container(border=True):
             st.caption("PREVISIBILIDADE"); st.subheader(f"{prev:.0f}%"); st.progress(prev/100)
 
-    # --- 8. RESUMO FINAL E GRÁFICO WATERFALL ---
+    # --- 8. RESUMO FINAL E GRÁFICO WATERFALL (MANTIDO) ---
     st.markdown(f"""<div style="background-color: #1a1c23; padding: 20px; border-radius: 10px; border-left: 5px solid #ff4b4b; margin-top:20px;">
                 <span style="color: #ff4b4b; font-weight: bold;">📢 RESUMO PARA A DIRETORIA</span><br>
                 No período selecionado, a operação gerou <span style="color:#2ecc71;">{format_brl(rec_total)}</span> em receitas 
@@ -175,30 +186,15 @@ def render(df, df_rec, df_geral, saidas_df, meses_sel):
     wf_text = [format_brl(val) for val in wf_y]
 
     fig_wf = go.Figure(go.Waterfall(
-        name="Fluxo de Caixa", 
-        orientation="v",
-        measure=wf_measure,
-        x=wf_x,
-        y=wf_y,
-        text=wf_text,
-        textposition="outside",
-        connector={"line": {"color": "rgba(255, 255, 255, 0.2)"}},
-        increasing={"marker": {"color": "#2ecc71"}},
-        decreasing={"marker": {"color": "#e74c3c"}},
-        totals={"marker": {"color": "#00D1FF"}} # Azul padrão igual ao Pareto
+        name="Fluxo de Caixa", orientation="v", measure=wf_measure, x=wf_x, y=wf_y, text=wf_text,
+        textposition="outside", connector={"line": {"color": "rgba(255, 255, 255, 0.2)"}},
+        increasing={"marker": {"color": "#2ecc71"}}, decreasing={"marker": {"color": "#e74c3c"}},
+        totals={"marker": {"color": "#00D1FF"}}
     ))
     
-    # Padronização igual ao Pareto
-    fig_wf.update_layout(
-        template="plotly_dark", 
-        height=400, 
-        margin=dict(t=50, b=50), 
-        showlegend=False,
-        hovermode="x unified"
-    )
+    fig_wf.update_layout(template="plotly_dark", height=400, margin=dict(t=50, b=50), showlegend=False, hovermode="x unified")
     st.plotly_chart(fig_wf, use_container_width=True)
 
-    # --- EXPLICAÇÃO DETALHADA DO WATERFALL ---
     with st.container(border=True):
         st.markdown("""
         <div style="padding: 10px;">
@@ -209,10 +205,7 @@ def render(df, df_rec, df_geral, saidas_df, meses_sel):
             <ul style="font-size: 13px; color: #ccc;">
                 <li><b style="color: #2ecc71;">Coluna Verde (Início):</b> Representa 100% da sua Receita Gerada no período.</li>
                 <li><b style="color: #e74c3c;">Degraus Vermelhos:</b> Mostram exatamente quanto cada categoria "subtraiu" da sua receita, em ordem de relevância.</li>
-                <li><b style="color: #00D1FF;">Coluna Azul (Final):</b> É o que restou (Resultado Líquido). Se estiver abaixo do nível zero, indica que as despesas consumiram mais do que a receita disponível.</li>
+                <li><b style="color: #00D1FF;">Coluna Azul (Final):</b> É o que restou (Resultado Líquido).</li>
             </ul>
-            <p style="font-size: 13px; background-color: rgba(0, 209, 255, 0.05); padding: 10px; border-radius: 5px; border-left: 3px solid #00D1FF;">
-                <b>Insight Estratégico:</b> Utilize esta visão para identificar qual "degrau" está sendo mais agressivo na erosão da sua margem líquida.
-            </p>
         </div>
         """, unsafe_allow_html=True)
