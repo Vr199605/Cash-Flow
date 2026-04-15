@@ -22,12 +22,12 @@ def exportar_pdf(rec_total, desp_total, res_liquido, perc_conc, prev, top_5_rec)
     pdf.set_font("Arial", "", 11)
     pdf.cell(200, 8, f"Receita Total: {format_brl(rec_total)}", ln=True)
     pdf.cell(200, 8, f"Despesa Total: {format_brl(desp_total)}", ln=True)
-    pdf.cell(200, 8, f"Resultado Líquido: {format_brl(res_liquido)}", ln=True)
+    pdf.cell(200, 8, f"Resultado Liquido: {format_brl(res_liquido)}", ln=True)
     pdf.ln(5)
 
     # Concentração
     pdf.set_font("Arial", "B", 12)
-    pdf.cell(200, 10, "2. Concentração de Receita (Top 5)", ln=True)
+    pdf.cell(200, 10, "2. Concentracao de Receita (Top 5)", ln=True)
     pdf.set_font("Arial", "", 10)
     for nome, valor in top_5_rec.items():
         pdf.cell(200, 7, f"- {nome}: {format_brl(valor)}", ln=True)
@@ -40,10 +40,11 @@ def exportar_pdf(rec_total, desp_total, res_liquido, perc_conc, prev, top_5_rec)
     pdf.set_font("Arial", "", 11)
     pdf.cell(200, 8, f"Previsibilidade de Custos: {prev:.0f}%", ln=True)
     
-    return pdf.output()
+    # O SEGREDO DO CONSERTO: Converter para bytes compatíveis com o Streamlit
+    return bytes(pdf.output())
 
 def render(df, df_rec, df_geral, saidas_df, meses_sel):
-    # --- LOGICA DE DADOS (SEM ALTERAÇÃO) ---
+    # --- LOGICA DE DADOS (MANTIDA INTEGRALMENTE) ---
     rec_total = df_rec[COL_V].sum()
     desp_total = abs(saidas_df[COL_V].sum())
     res_liquido = rec_total - desp_total
@@ -66,15 +67,19 @@ def render(df, df_rec, df_geral, saidas_df, meses_sel):
         st.caption(f"Período: {', '.join(meses_sel) if meses_sel else 'Todo o período'} | Gerado em 15 de abril de 2026")
     
     with col_btn:
-        pdf_data = exportar_pdf(rec_total, desp_total, res_liquido, perc_3, prev, top_5_rec)
-        st.download_button(
-            label="📥 Exportar PDF",
-            data=pdf_data,
-            file_name="Storytelling_Maldivas.pdf",
-            mime="application/pdf",
-        )
+        # Aqui chamamos a função corrigida
+        try:
+            pdf_bytes = exportar_pdf(rec_total, desp_total, res_liquido, perc_3, prev, top_5_rec)
+            st.download_button(
+                label="📥 Exportar PDF",
+                data=pdf_bytes,
+                file_name="Storytelling_Maldivas.pdf",
+                mime="application/pdf",
+            )
+        except Exception as e:
+            st.error("Erro ao gerar PDF. Verifique os dados.")
 
-    # --- 1. INDICADOR DE SAÚDE ---
+    # --- 1. INDICADOR DE SAÚDE (MANTIDO) ---
     col_s1, col_s2 = st.columns([1, 3])
     with col_s1:
         st.markdown(
@@ -90,7 +95,7 @@ def render(df, df_rec, df_geral, saidas_df, meses_sel):
 
     st.write("---")
 
-    # --- 2. KPI CARDS ---
+    # --- 2. KPI CARDS (MANTIDO) ---
     indice_custo = (desp_total / rec_total * 100) if rec_total != 0 else 0
     c1, c2, c3, c4 = st.columns(4)
     labels = ["RECEITA TOTAL", "DESPESA TOTAL", "RESULTADO LÍQUIDO", "CUSTO / RECEITA"]
@@ -103,7 +108,7 @@ def render(df, df_rec, df_geral, saidas_df, meses_sel):
                      <p style="margin:0; font-size: 10px; color: {cor}; font-weight: bold;">● {lab}</p>
                      <h3 style="margin:0; font-size: 18px;">{v_str}</h3></div>""", unsafe_allow_html=True)
 
-    # --- 3. EVOLUÇÃO DO FLUXO ---
+    # --- 3. EVOLUÇÃO DO FLUXO (MANTIDO) ---
     st.markdown("#### 📉 Evolução do Fluxo de Caixa")
     df_m_rec = df_rec.groupby('Mes_Ano')[COL_V].sum().reset_index()
     df_m_sai = saidas_df.groupby('Mes_Ano')[COL_V].sum().abs().reset_index()
@@ -117,7 +122,7 @@ def render(df, df_rec, df_geral, saidas_df, meses_sel):
     fig_flow.update_layout(template="plotly_dark", barmode='group', height=350, margin=dict(t=20, b=20), hovermode="x unified")
     st.plotly_chart(fig_flow, use_container_width=True)
 
-    # --- 4. ANÁLISE DE PARETO ---
+    # --- 4. ANÁLISE DE PARETO (MANTIDO) ---
     st.markdown("#### 🎯 Análise de Pareto — Top 10 Despesas")
     df_pareto = saidas_df.groupby('Categoria')[COL_V].sum().abs().sort_values(ascending=False).head(10).reset_index()
     df_pareto['% Acumulada'] = (df_pareto[COL_V].cumsum() / df_pareto[COL_V].sum()) * 100
@@ -127,7 +132,7 @@ def render(df, df_rec, df_geral, saidas_df, meses_sel):
     fig_p.update_layout(template="plotly_dark", height=350, margin=dict(t=20), hovermode="x unified")
     st.plotly_chart(fig_p, use_container_width=True)
 
-    # --- 5. CONCENTRAÇÃO DE RECEITA ---
+    # --- 5. CONCENTRAÇÃO DE RECEITA (MANTIDO) ---
     st.markdown("#### 👁️ Concentração de Receita")
     c_rec1, c_rec2 = st.columns([1, 1])
     with c_rec1:
@@ -148,7 +153,7 @@ def render(df, df_rec, df_geral, saidas_df, meses_sel):
         st.caption("Percentual da receita concentrado nos 3 maiores pagadores.")
         st.success("✅ Baixo Risco: Base de receita diversificada — excelente resiliência operacional.")
 
-    # --- 6. ESTRUTURA DE CUSTOS ---
+    # --- 6. ESTRUTURA DE CUSTOS (MANTIDO) ---
     st.markdown("#### ⚡ Estrutura de Custos")
     col_e1, col_e2, col_e3 = st.columns(3)
     with col_e1:
@@ -172,7 +177,7 @@ def render(df, df_rec, df_geral, saidas_df, meses_sel):
             st.write("dos custos são previsíveis")
             st.progress(prev/100)
 
-    # --- 7. RESUMO FINAL ---
+    # --- 7. RESUMO FINAL (MANTIDO) ---
     st.markdown(f"""<div style="background-color: #1a1c23; padding: 20px; border-radius: 10px; border-left: 5px solid #ff4b4b; margin-top:20px;">
                 <span style="color: #ff4b4b; font-weight: bold;">📢 RESUMO PARA A DIRETORIA</span><br>
                 No período selecionado, a operação gerou <span style="color:#2ecc71;">{format_brl(rec_total)}</span> em receitas 
