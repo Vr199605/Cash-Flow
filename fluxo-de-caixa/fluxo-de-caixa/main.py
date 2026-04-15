@@ -8,8 +8,8 @@ from auth import check_password
 if not check_password():
     st.stop()
 
-# Importações após autenticação
-import io  # noqa: E402
+# Importações após autenticação (evita overhead desnecessário na tela de login)
+import io  # noqa: E402  (usado pelo pdf_report via buffer)
 
 from config import COL_V, CSS, format_brl
 from data import load_and_process
@@ -107,19 +107,19 @@ if meses_sel:
 saidas_df = df[df[COL_V] < 0]
 
 # ---------------------------------------------------------------------------
-# TRATAMENTO DEPARA DEPARTAMENTOS (BACKOFFICE DEFAULT)
+# TRATAMENTO DEPARA DEPARTAMENTOS (ALOCAÇÃO BACKOFFICE NO SETOR)
 # ---------------------------------------------------------------------------
-df_dep_processado = df.copy() # Usando o df já filtrado pelo sidebar
+df_dep_processado = df.copy()
 if 'Categoria' in df_dep_processado.columns and df_depara_raw is not None:
-    # Merge com o depara para trazer os setores
+    # Realiza o merge para trazer a coluna SETOR do depara
     df_dep_processado = df_dep_processado.merge(df_depara_raw, on='Categoria', how='left', suffixes=('', '_depara'))
     
-    # O erro indica que a aba espera a coluna 'SETOR'
+    # Se a coluna 'SETOR' existir, preenche os vazios com 'BACKOFFICE'
     if 'SETOR' in df_dep_processado.columns:
-        df_dep_processado['SETOR'] = df_dep_processado['SETOR'].fillna('Backoffice')
+        df_dep_processado['SETOR'] = df_dep_processado['SETOR'].fillna('BACKOFFICE')
     else:
-        # Força a criação da coluna caso o merge não a traga
-        df_dep_processado['SETOR'] = 'Backoffice'
+        # Caso a coluna não venha no merge, cria a coluna SETOR como BACKOFFICE por padrão
+        df_dep_processado['SETOR'] = 'BACKOFFICE'
 
 # ---------------------------------------------------------------------------
 # HEADER PRINCIPAL
@@ -194,7 +194,7 @@ with tab8:
 with tab9:
     contas_pagar.render(df_cp_raw, meses_sel, empresas_selecionadas)
 with tab10:
-    # Usando o processado que agora tem a coluna 'SETOR' preenchida
+    # Enviamos o DataFrame processado com a coluna SETOR preenchida
     departamentos.render(df_dep_processado, df_depara_raw, meses_sel, empresas_selecionadas)
 with tab11:
     storytelling.render(df, df_rec, df_raw, saidas_df, meses_sel)
