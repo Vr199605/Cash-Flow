@@ -77,7 +77,6 @@ with st.sidebar:
 
     # NOVO: Lógica de Canais (Checkboxes)
     st.markdown("### 📡 CANAIS")
-    # Verifica se a coluna Canal existe no df_rec_raw (processado no data.py)
     opcoes_canais = sorted(df_rec_raw['Canal'].unique()) if 'Canal' in df_rec_raw.columns else ["Partner", "B2B", "B2C", "Outros"]
     canais_sel = []
     with st.container(border=True):
@@ -109,7 +108,6 @@ with st.sidebar:
     if meses_sel:
         df_pdf_sai = df_raw[(df_raw['Mes_Ano'].isin(meses_sel)) & (df_raw[COL_V] < 0)]
         df_pdf_rec = df_rec_raw[df_rec_raw['Mes_Ano'].isin(meses_sel)]
-        # Se houver filtro de canal, aplica no PDF de entradas
         if 'Canal' in df_pdf_rec.columns and canais_sel:
             df_pdf_rec = df_pdf_rec[df_pdf_rec['Canal'].isin(canais_sel)]
             
@@ -123,7 +121,7 @@ with st.sidebar:
         )
 
 # ---------------------------------------------------------------------------
-# FILTROS APLICADOS (LÓGICA GLOBAL)
+# FILTROS APLICADOS
 # ---------------------------------------------------------------------------
 df = df_raw.copy()
 if meses_sel:
@@ -136,7 +134,6 @@ if cats_sel:
 df_rec = df_rec_raw.copy()
 if meses_sel:
     df_rec = df_rec[df_rec['Mes_Ano'].isin(meses_sel)]
-# Aplica o novo filtro de Canal nos recebimentos globais
 if 'Canal' in df_rec.columns and canais_sel:
     df_rec = df_rec[df_rec['Canal'].isin(canais_sel)]
 
@@ -183,7 +180,7 @@ for idx, row in agrupado_cp.iterrows():
 st.write("---")
 
 # ---------------------------------------------------------------------------
-# ABAS - REORDENADAS E RENOMEADAS (MANTIDO)
+# ABAS
 # ---------------------------------------------------------------------------
 (
     tab1, tab2, tab3, tab4, tab5,
@@ -207,7 +204,6 @@ with tab5:
 with tab6:
     analise_mensal.render(df, df_rec, meses_sel)
 with tab7:
-    # Repassa canais_sel para evitar o erro de visualização na aba Departamentos
     departamentos.render(df, df_depara_raw, meses_sel, empresas_selecionadas)
 with tab8:
     storytelling.render(df, df_rec, df, saidas_df, meses_sel)
