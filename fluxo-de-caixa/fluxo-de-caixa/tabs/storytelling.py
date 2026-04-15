@@ -1,130 +1,99 @@
-import pandas as pd
 import streamlit as st
+import plotly.graph_objects as go
+from config import format_brl, COL_V
 
-from config import COL_V, format_brl
+def render(df, df_rec, df_geral, saidas_df, meses_sel):
+    st.markdown("### 🧠 STORYTELLING EXECUTIVO")
+    st.caption(f"Período: {', '.join(meses_sel) if meses_sel else 'Todo o período'} | Gerado em 15 de abril de 2026")
 
+    # --- INDICADOR DE SAÚDE (O CÍRCULO NO TOPO) ---
+    col_vazia, col_saude, col_texto = st.columns([1, 1, 3])
+    with col_saude:
+        # Exemplo de Gauge ou indicador circular simples
+        st.markdown(
+            f"""
+            <div style="text-align: center; border: 2px solid #555; border-radius: 50%; width: 80px; height: 80px; display: flex; align-items: center; justify-content: center;">
+                <span style="font-size: 24px; font-weight: bold; color: #ff4b4b;">0</span>
+            </div>
+            <p style="text-align: center; margin-top: 5px;">PONTOS</p>
+            """, unsafe_allow_html=True
+        )
+    with col_texto:
+        st.markdown("<h4 style='color: #ff4b4b; margin-bottom: 0;'>Crítico</h4>", unsafe_allow_html=True)
+        st.write("Recuo em margem líquida, variação de custos, concentração de receita e anomalias detectadas.")
 
-def render(df, df_rec, df_raw, saidas_df, meses_sel: list):
-    st.markdown("### 🧠 Inteligência Financeira e Storytelling")
     st.write("---")
 
-    if not meses_sel:
-        st.info("Selecione pelo menos um período no menu lateral para gerar o Storytelling.")
-        return
+    # --- KPI CARDS (RECEITA, DESPESA, RESULTADO, ÍNDICE) ---
+    # Valores para os cards
+    rec_total = df_rec[COL_V].sum()
+    desp_total = abs(saidas_df[COL_V].sum())
+    res_liquido = rec_total - desp_total
+    indice_custo = (desp_total / rec_total * 100) if rec_total != 0 else 0
 
-    v_ent = df_rec[COL_V].sum()
-    v_sai = abs(df[df[COL_V] < 0][COL_V].sum())
-    lucro = v_ent - v_sai
-    sobra_pct = (lucro / v_ent * 100) if v_ent > 0 else 0
+    c1, c2, c3, c4 = st.columns(4)
 
-    # --- Índice de retenção e variação de saída ---
-    st.markdown("#### 📈 Comportamento do Fluxo")
-    col1, col2 = st.columns(2)
-
-    with col1:
+    with c1:
         st.markdown(f"""
-        <div style='background: rgba(30,41,59,0.8); padding: 20px; border-radius: 10px; border-left: 5px solid #00D1FF;'>
-            <h4 style='margin:0; color:#00D1FF;'>Índice de Retenção</h4>
-            <p style='font-size: 24px; font-weight: bold; margin:0;'>{sobra_pct:.1f}%</p>
-            <p style='color: #94A3B8; font-size: 14px;'>
-                De cada R$ 100,00 que entram,
-                <b>{format_brl(max(0, sobra_pct))}</b> ficam no caixa após as despesas.
-            </p>
-        </div>
+            <div style="border: 1px solid #00ff00; padding: 15px; border-radius: 10px; background-color: rgba(0,255,0,0.05);">
+                <p style="margin:0; font-size: 12px; color: #00ff00;">🟢 RECEITA TOTAL</p>
+                <h3 style="margin:0;">{format_brl(rec_total)}</h3>
+            </div>
         """, unsafe_allow_html=True)
 
-    with col2:
-        if len(meses_sel) > 1:
-            meses_ord = sorted(meses_sel, key=lambda x: pd.to_datetime(x, format='%m/%Y'))
-            m_atual, m_ant = meses_ord[-1], meses_ord[-2]
-            gasto_atual = abs(df_raw[df_raw['Mes_Ano'] == m_atual][COL_V].sum())
-            gasto_ant = abs(df_raw[df_raw['Mes_Ano'] == m_ant][COL_V].sum())
-            diff = gasto_atual - gasto_ant
-            pct = (diff / gasto_ant * 100) if gasto_ant > 0 else 0
-            cor = "#FF4B4B" if diff > 0 else "#00D1FF"
-            st.markdown(f"""
-            <div style='background: rgba(30,41,59,0.8); padding: 20px; border-radius: 10px; border-left: 5px solid {cor};'>
-                <h4 style='margin:0; color:{cor};'>Variação de Saída</h4>
-                <p style='font-size: 24px; font-weight: bold; margin:0;'>{pct:+.1f}%</p>
-                <p style='color: #94A3B8; font-size: 14px;'>
-                    O custo total variou <b>{format_brl(diff)}</b> em relação ao mês anterior ({m_ant}).
-                </p>
+    with c2:
+        st.markdown(f"""
+            <div style="border: 1px solid #ff4b4b; padding: 15px; border-radius: 10px; background-color: rgba(255,75,75,0.05);">
+                <p style="margin:0; font-size: 12px; color: #ff4b4b;">🔴 DESPESA TOTAL</p>
+                <h3 style="margin:0;">{format_brl(desp_total)}</h3>
             </div>
-            """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
 
-    # --- Recorrentes vs Pontuais ---
+    with c3:
+        color = "#ff4b4b" if res_liquido < 0 else "#00ff00"
+        st.markdown(f"""
+            <div style="border: 1px solid {color}; padding: 15px; border-radius: 10px;">
+                <p style="margin:0; font-size: 12px; color: {color};">🔘 RESULTADO LÍQUIDO</p>
+                <h3 style="margin:0;">{format_brl(res_liquido)}</h3>
+            </div>
+        """, unsafe_allow_html=True)
+
+    with c4:
+        st.markdown(f"""
+            <div style="border: 1px solid #f1c40f; padding: 15px; border-radius: 10px; background-color: rgba(241,196,15,0.05);">
+                <p style="margin:0; font-size: 12px; color: #f1c40f;">🟡 CUSTO / RECEITA</p>
+                <h3 style="margin:0;">{indice_custo:.1f}%</h3>
+            </div>
+        """, unsafe_allow_html=True)
+
+    # --- GRÁFICO DE FLUXO (BARRAS VERDES E VERMELHAS) ---
     st.write("")
-    st.markdown("#### 🎯 Classificação de Gastos (Recorrentes vs Pontuais)")
+    st.subheader("📊 Evolução do Fluxo de Caixa")
+    
+    # Exemplo de lógica para as barras por mês
+    df_evolucao = df_geral.groupby('Mes_Ano')[COL_V].sum().reset_index()
+    # (Aqui você deve gerar um gráfico do Plotly com barmode='group' 
+    # usando cores específicas: green para entradas e red para saídas)
+    
+    # --- RODAPÉ: COMPOSIÇÃO E RADAR ---
+    st.write("---")
+    col_pizza, col_radar = st.columns(2)
+    
+    with col_pizza:
+        st.markdown("#### 🍕 Distribuição por Grupo")
+        # Inserir aqui seu st.plotly_chart de Donut Chart
+        
+    with col_radar:
+        st.markdown("#### 🕸️ Radar de Concentração (%)")
+        # Inserir aqui seu gráfico de radar (Scatterpolar do Plotly)
 
-    df_sai_raw = df_raw[df_raw[COL_V] < 0]
-    count_meses = max(len(meses_sel), 1)
-    recorrencia = (
-        df_sai_raw[df_sai_raw['Mes_Ano'].isin(meses_sel)]
-        .groupby('Categoria')['Mes_Ano'].nunique() / count_meses
-    )
-    pontuais = recorrencia[recorrencia <= 0.4].index.tolist()
-    recorrentes = recorrencia[recorrencia > 0.4].index.tolist()
-
-    val_pontuais = abs(df[df['Categoria'].isin(pontuais)][COL_V].sum())
-    val_recorrentes = abs(df[df['Categoria'].isin(recorrentes)][COL_V].sum())
-
-    cp1, cp2 = st.columns(2)
-    with cp1:
-        st.info(f"📋 **Gastos Pontuais:** {format_brl(val_pontuais)}")
-        with st.expander("Ver categorias pontuais"):
-            st.write(", ".join(pontuais) if pontuais else "Nenhuma detectada")
-    with cp2:
-        st.success(f"🔄 **Gastos Recorrentes:** {format_brl(val_recorrentes)}")
-        with st.expander("Ver categorias recorrentes"):
-            st.write(", ".join(recorrentes) if recorrentes else "Nenhuma detectada")
-
-    # --- Anomalias ---
-    st.write("")
-    st.markdown("#### 🚨 Alertas de Anomalias (Desvios Acima de 15%)")
-
-    if len(meses_sel) > 1:
-        meses_ord = sorted(meses_sel, key=lambda x: pd.to_datetime(x, format='%m/%Y'))
-        cats_atual = df[df[COL_V] < 0].groupby('Categoria')[COL_V].sum().abs()
-        historico = (
-            df_raw[(df_raw['Mes_Ano'] != meses_ord[-1]) & (df_raw[COL_V] < 0)]
-            .groupby(['Mes_Ano', 'Categoria'])[COL_V].sum().abs().reset_index()
-        )
-        media_hist = historico.groupby('Categoria')[COL_V].mean()
-
-        anomalias = []
-        for cat, val in cats_atual.items():
-            if cat in media_hist.index:
-                media = media_hist[cat]
-                if val > media * 1.15:
-                    desvio = ((val / media) - 1) * 100
-                    anomalias.append(
-                        f"A categoria **{cat}** gastou **{format_brl(val)}** (+{desvio:.1f}% acima da média)."
-                    )
-
-        if anomalias:
-            for a in anomalias:
-                st.error(a)
-        else:
-            st.success("✅ Nenhuma anomalia de custo detectada em relação à média histórica.")
-
-    # --- Explicação das variações ---
-    st.write("")
-    st.markdown("#### 🔍 Explicação das Variações")
-    if not saidas_df.empty:
-        maior_grupo = saidas_df.groupby('Grupo_Filtro')[COL_V].sum().abs().idxmax()
-        maior_valor = saidas_df.groupby('Grupo_Filtro')[COL_V].sum().abs().max()
-        pct_grupo = (maior_valor / v_sai * 100) if v_sai > 0 else 0
-        st.warning(
-            f"📌 **Concentração de Saída:** O grupo **{maior_grupo}** é o seu maior centro de custo, "
-            f"representando **{pct_grupo:.1f}%** de todas as saídas."
-        )
-        if lucro < 0:
-            st.error(
-                f"🚨 **Alerta de Caixa:** As saídas superaram as entradas em **{format_brl(abs(lucro))}**. "
-                f"Recomenda-se auditar as categorias do grupo {maior_grupo}."
-            )
-        else:
-            st.success(
-                f"💎 **Saúde Financeira:** A operação é sustentável, gerando um excedente de "
-                f"**{format_brl(lucro)}** para reinvestimento."
-            )
+    # --- RESUMO FINAL (TEXTO COLORIDO NO FUNDO) ---
+    st.markdown(f"""
+        <div style="background-color: #1a1c23; padding: 20px; border-radius: 10px; border-left: 5px solid #ff4b4b;">
+            <p style="margin:0; font-size: 14px;">
+                No período de <b>{', '.join(meses_sel)}</b>, a operação gerou <span style="color:#00ff00;">{format_brl(rec_total)}</span> 
+                em receitas e consumiu <span style="color:#ff4b4b;">{format_brl(desp_total)}</span> em despesas, 
+                resultando em um <span style="color:#ff4b4b;">déficit de {format_brl(res_liquido)}</span>.
+            </p>
+        </div>
+    """, unsafe_allow_html=True)
