@@ -1,138 +1,95 @@
 import io
 import os
+
 import pandas as pd
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.platypus import (
-    HRFlowable, Image, PageBreak, Paragraph, SimpleDocTemplate, 
-    Spacer, Table, TableStyle
+    HRFlowable,
+    Image,
+    PageBreak,
+    Paragraph,
+    SimpleDocTemplate,
+    Spacer,
+    Table,
+    TableStyle,
 )
-from reportlab.graphics.shapes import Drawing
-from reportlab.graphics.charts.piecharts import Pie
-from reportlab.graphics.charts.barcharts import VerticalBarChart
-from reportlab.graphics.legends import Legend
 
 from config import COL_V, format_brl
 
+
 def gerar_pdf_perfeito(df_sai, df_rec, meses: list, empresas_selecionadas: list) -> io.BytesIO:
     buffer = io.BytesIO()
-    # Definimos margens amplas para garantir que nada fique "por cima" de nada
     doc = SimpleDocTemplate(
         buffer, pagesize=A4,
-        rightMargin=50, leftMargin=50, topMargin=50, bottomMargin=50,
+        rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=40,
     )
-    
-    # --- CORES CORPORATIVAS ---
-    C_PRIMARIO = colors.HexColor("#00D1FF")
-    C_SECUNDARIO = colors.HexColor("#0F172A")
-    C_TEXTO = colors.HexColor("#334155")
-    C_BG = colors.HexColor("#F8FAFC")
+    getSampleStyleSheet()
 
-    # --- ESTILOS REFINADOS ---
-    st = getSampleStyleSheet()
-    st_capa = ParagraphStyle('Capa', fontSize=36, textColor=C_SECUNDARIO, fontName='Helvetica-Bold', alignment=1, spaceAfter=30)
-    st_h1 = ParagraphStyle('H1', fontSize=18, textColor=C_SECUNDARIO, fontName='Helvetica-Bold', spaceBefore=25, spaceAfter=15)
-    st_sub_center = ParagraphStyle('SubC', fontSize=11, textColor=colors.HexColor("#64748B"), alignment=1, leading=16)
-    st_body = ParagraphStyle('Body', fontSize=10, textColor=C_TEXTO, leading=14)
-    st_story = ParagraphStyle('Story', fontSize=11, textColor=C_SECUNDARIO, leading=18, leftIndent=25, rightIndent=25, borderPadding=20, backColor=colors.white, borderSize=1, borderColor=colors.HexColor("#E2E8F0"))
+    st_tit = ParagraphStyle('Tit', fontSize=24, textColor=colors.HexColor("#00D1FF"), fontName='Helvetica-Bold', spaceAfter=14)
+    st_sub = ParagraphStyle('Sub', fontSize=9, textColor=colors.HexColor("#64748B"), spaceAfter=20)
+    st_h1 = ParagraphStyle('H1', fontSize=14, textColor=colors.HexColor("#1E293B"), fontName='Helvetica-Bold', spaceBefore=20, spaceAfter=10)
+    st_body = ParagraphStyle('Body', fontSize=10, textColor=colors.HexColor("#334155"), leading=14, alignment=4)
     st_footer = ParagraphStyle('Foot', fontSize=8, textColor=colors.grey, alignment=1)
 
     elementos = []
 
-    # --- PÁGINA 1: CAPA IMPACTANTE ---
-    elementos.append(Spacer(1, 120))
     logo_path = "avaliacoes_salvas/logo_maldivas.png"
     if os.path.exists(logo_path):
-        img = Image(logo_path, width=3.2 * inch, height=1.2 * inch)
-        img.hAlign = 'CENTER'
+        img = Image(logo_path, width=2.5 * inch, height=1.0 * inch)
+        img.hAlign = 'LEFT'
         elementos.append(img)
-    
-    elementos.append(Spacer(1, 60))
-    elementos.append(Paragraph("RELATÓRIO DE INTELIGÊNCIA FINANCEIRA", st_sub_center))
-    elementos.append(Paragraph("PERFORMANCE EXECUTIVA", st_capa))
-    
-    emp_str = " + ".join(sorted(empresas_selecionadas))
-    elementos.append(Paragraph(f"<b>UNIDADES:</b> {emp_str.upper()}", st_sub_center))
-    elementos.append(Paragraph(f"<b>PERÍODO:</b> {', '.join(meses)}", st_sub_center))
-    
-    elementos.append(Spacer(1, 180))
-    elementos.append(HRFlowable(width="40%", thickness=2, color=C_PRIMARIO, hAlign='CENTER'))
-    elementos.append(Paragraph(f"Data de Emissão: {pd.Timestamp.now().strftime('%d/%m/%Y')}", st_sub_center))
-    elementos.append(PageBreak())
+        elementos.append(Spacer(1, 12))
 
-    # --- PÁGINA 2: STORYTELLING E DASHBOARD ---
     v_in = df_rec[COL_V].sum()
     v_out = abs(df_sai[COL_V].sum())
     saldo = v_in - v_out
-    margem = (saldo / v_in * 100 if v_in > 0 else 0)
+    nome_exibicao = "+".join(sorted(empresas_selecionadas))
 
-    elementos.append(Paragraph("01. ANÁLISE ESTRATÉGICA (STORYTELLING)", st_h1))
-    
-    # Texto baseado no resultado real
-    tendencia = "positiva" if saldo > 0 else "deficitária"
-    analise_texto = (
-        f"A operação atual apresenta uma estrutura {tendencia}, com uma margem líquida de {margem:.2f}%. "
-        f"O fluxo de caixa foi sustentado por um faturamento total de {format_brl(v_in)}, confrontados por "
-        f"{format_brl(v_out)} em saídas. Esta performance reflete a dinâmica operacional do período analisado."
-    )
-    elementos.append(Paragraph(analise_texto, st_story))
-    elementos.append(Spacer(1, 30))
+    elementos.append(Paragraph(f"RELATÓRIO FINANCEIRO - {nome_exibicao.upper()}", st_tit))
+    elementos.append(Paragraph(
+        f"Consolidado: {', '.join(meses)}  |  Emissão: {pd.Timestamp.now().strftime('%d/%m/%Y')}",
+        st_sub,
+    ))
+    elementos.append(HRFlowable(width="100%", thickness=1.5, color=colors.HexColor("#00D1FF"), spaceAfter=20))
 
-    # Tabela de KPIs (Estilo Grid)
+    elementos.append(Paragraph("Objetivo e Metodologia", st_h1))
+    elementos.append(Paragraph(
+        "Este relatório apresenta a saúde financeira detalhada da operação. Os dados foram processados "
+        "através de conexões dinâmicas, garantindo que cada entrada e saída seja categorizada para "
+        "análise de Pareto e eficiência operacional.",
+        st_body,
+    ))
+
+    # I. KPIs
+    elementos.append(Paragraph("I. PERFORMANCE DE LIQUIDEZ", st_h1))
     data_kpi = [
-        [Paragraph("<b>ENTRADAS (CASH IN)</b>", st_body), Paragraph("<b>SAÍDAS (CASH OUT)</b>", st_body)],
-        [format_brl(v_in), format_brl(v_out)],
-        [Paragraph("<b>RESULTADO LÍQUIDO</b>", st_body), Paragraph("<b>MARGEM OPERACIONAL</b>", st_body)],
-        [format_brl(saldo), f"{margem:.2f}%"]
+        ["MÉTRICA", "VALOR"],
+        ["(+) TOTAL RECEBIMENTOS", format_brl(v_in)],
+        ["(-) TOTAL DESPESAS", format_brl(v_out)],
+        ["(=) RESULTADO LÍQUIDO", format_brl(saldo)],
+        ["MARGEM SOBRE RECEITA", f"{(saldo / v_in * 100 if v_in > 0 else 0):.2f}%"],
     ]
-    t_kpi = Table(data_kpi, colWidths=[240, 240])
+    t_kpi = Table(data_kpi, colWidths=[300, 150])
     t_kpi.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor("#F8FAFC")),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('FONTSIZE', (0, 1), (-1, 1), 18),
-        ('FONTNAME', (0, 1), (-1, 1), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 3), (-1, 3), 18),
-        ('FONTNAME', (0, 3), (-1, 3), 'Helvetica-Bold'),
-        ('TEXTCOLOR', (0, 3), (0, 3), colors.HexColor("#15803D") if saldo > 0 else colors.red),
-        ('GRID', (0, 0), (-1, -1), 2, colors.white),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 15),
-        ('TOPPADDING', (0, 0), (-1, -1), 15),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#1E293B")),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
+        ('BACKGROUND', (0, 3), (1, 3), colors.HexColor("#F1F5F9")),
+        ('FONTNAME', (0, 3), (1, 3), 'Helvetica-Bold'),
     ]))
     elementos.append(t_kpi)
 
-    # --- GRÁFICO DE COMPOSIÇÃO DE DESPESAS ---
-    elementos.append(Spacer(1, 40))
-    elementos.append(Paragraph("02. DISTRIBUIÇÃO DOS INVESTIMENTOS", st_h1))
-    
-    df_g = df_sai.groupby('Grupo_Filtro')[COL_V].sum().abs().reset_index().sort_values(by=COL_V, ascending=False).head(5)
-    
-    d_pizza = Drawing(480, 200)
-    pc = Pie()
-    pc.x = 20
-    pc.y = 50
-    pc.width = 120
-    pc.height = 120
-    pc.data = df_g[COL_V].tolist()
-    pc.labels = [f"{(v/v_out)*100:.1f}%" for v in df_g[COL_V]]
-    
-    legenda = Legend()
-    legenda.x = 180
-    legenda.y = 130
-    legenda.fontSize = 10
-    legenda.fontName = 'Helvetica'
-    legenda.colorNamePairs = [(pc.slices[i].fillColor, df_g['Grupo_Filtro'].iloc[i][:30]) for i in range(len(df_g))]
-    
-    d_pizza.add(pc)
-    d_pizza.add(legenda)
-    elementos.append(d_pizza)
+    # II. Fluxo mensal
+    elementos.append(Paragraph("II. FLUXO MENSAL DETALHADO", st_h1))
+    elementos.append(Paragraph(
+        "Acompanhamento do resultado líquido mensal (In vs Out) para identificação de gaps de caixa.",
+        st_body,
+    ))
 
-    # --- PÁGINA 3: DETALHAMENTO MENSAL ---
-    elementos.append(PageBreak())
-    elementos.append(Paragraph("03. DINÂMICA DE CAIXA MENSAL", st_h1))
-    
     burn_in = df_rec.groupby('Mes_Ano')[COL_V].sum().reset_index().rename(columns={COL_V: 'In'})
     burn_out = df_sai.groupby('Mes_Ano')[COL_V].sum().abs().reset_index().rename(columns={COL_V: 'Out'})
     df_burn = pd.merge(burn_in, burn_out, on='Mes_Ano', how='outer').fillna(0)
@@ -140,24 +97,56 @@ def gerar_pdf_perfeito(df_sai, df_rec, meses: list, empresas_selecionadas: list)
     df_burn['_sort'] = pd.to_datetime(df_burn['Mes_Ano'], format='%m/%Y')
     df_burn = df_burn.sort_values('_sort')
 
-    data_b = [["MÊS/ANO", "ENTRADAS (+)", "SAÍDAS (-)", "SALDO"]]
-    for r in df_burn[['Mes_Ano', 'In', 'Out', 'Net']].values:
-        data_b.append([r[0], format_brl(r[1]), format_brl(r[2]), format_brl(r[3])])
+    data_b = [["MÊS/ANO", "ENTRADAS (+)", "SAÍDAS (-)", "SALDO LÍQUIDO"]]
+    for row in df_burn[['Mes_Ano', 'In', 'Out', 'Net']].values:
+        data_b.append([row[0], format_brl(row[1]), format_brl(row[2]), format_brl(row[3])])
 
-    t_b = Table(data_b, colWidths=[120, 120, 120, 120])
+    t_b = Table(data_b, colWidths=[110, 110, 110, 120])
     t_b.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), C_SECUNDARIO),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#F1F5F9")),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ('ALIGN', (1, 1), (-1, -1), 'RIGHT'),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#E2E8F0")),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor("#F8FAFC")]),
+        ('GRID', (0, 0), (-1, -1), 0.2, colors.grey),
+        ('FONTNAME', (0, 1), (0, -1), 'Helvetica-Bold'),
     ]))
+    for i, row in enumerate(df_burn[['Mes_Ano', 'In', 'Out', 'Net']].values):
+        cor = colors.red if row[3] < 0 else colors.HexColor("#008000")
+        t_b.setStyle(TableStyle([('TEXTCOLOR', (3, i + 1), (3, i + 1), cor)]))
     elementos.append(t_b)
 
-    # RODAPÉ
-    elementos.append(Spacer(1, 60))
-    elementos.append(Paragraph("--- RELATÓRIO CONFIDENCIAL - USO INTERNO ---", st_footer))
+    # III. Grupos
+    elementos.append(PageBreak())
+    elementos.append(Paragraph("III. ANÁLISE DE IMPACTO POR GRUPO", st_h1))
+    df_g = df_sai.groupby('Grupo_Filtro')[COL_V].sum().abs().reset_index()
+    data_g = [["GRUPO", "VALOR TOTAL", "IMPACTO NA RECEITA"]]
+    for row in df_g.values:
+        impacto = (row[1] / v_in * 100) if v_in > 0 else 0
+        data_g.append([str(row[0]), format_brl(row[1]), f"{impacto:.1f}%"])
+    t_g = Table(data_g, colWidths=[200, 125, 125])
+    t_g.setStyle(TableStyle([
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor("#F8FAFC")]),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+    ]))
+    elementos.append(t_g)
+
+    # IV. Top 10 recebimentos
+    if 'Nome' in df_rec.columns:
+        elementos.append(Paragraph("IV. CONCENTRAÇÃO DE RECEBIMENTOS (TOP 10)", st_h1))
+        df_n = df_rec.groupby('Nome')[COL_V].sum().sort_values(ascending=False).head(10).reset_index()
+        data_n = [["ORIGEM / NOME", "VALOR"]] + [[str(r[0]), format_brl(r[1])] for r in df_n.values]
+        t_n = Table(data_n, colWidths=[320, 130])
+        t_n.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#00D1FF")),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
+        ]))
+        elementos.append(t_n)
+
+    elementos.append(Spacer(1, 50))
+    elementos.append(Paragraph(
+        "--- Documento Gerado para Fins de Auditoria e Decisão Estratégica ---",
+        st_footer,
+    ))
 
     doc.build(elementos)
     buffer.seek(0)
