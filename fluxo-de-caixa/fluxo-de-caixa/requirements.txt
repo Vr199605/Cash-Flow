@@ -4,3 +4,4 @@ plotly
 fpdf2
 openpyxl
 kaleido
+reportlab
