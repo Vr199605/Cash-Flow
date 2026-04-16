@@ -168,14 +168,14 @@ for idx, row in agrupado_cp.iterrows():
 st.write("---")
 
 # ---------------------------------------------------------------------------
-# ABAS - REORDENADAS E RENOMEADAS (MANTIDO)
+# ABAS - ATUALIZADAS (Remoção da aba de departamentos)
 # ---------------------------------------------------------------------------
 (
     tab1, tab2, tab3, tab4, tab5,
-    tab6, tab7, tab8, tab9, tab10,
+    tab6, tab7, tab8, tab9,
 ) = st.tabs([
     "📊 APRESENTAÇÃO", "💰 PARETO CASH IN", "🎯 PARETO CASH OUT", "🔥 CASH BURN", 
-    "📑 CONTAS A PAGAR", "📈 SALDO CAIXA", "🏢 DEPT. GLOBUS", "🧠 STORYTELLING", 
+    "📑 CONTAS A PAGAR", "📈 SALDO CAIXA", "🧠 STORYTELLING", 
     "📋 DADOS", "💰 RECEBIDOS"
 ])
 
@@ -192,10 +192,8 @@ with tab5:
 with tab6:
     analise_mensal.render(df, df_rec, meses_sel)
 with tab7:
-    departamentos.render(df, df_depara_raw, meses_sel, empresas_selecionadas)
-with tab8:
     storytelling.render(df, df_rec, df, saidas_df, meses_sel)
-with tab9:
+with tab8:
     dados.render(df)
-with tab10:
+with tab9:
     recebidos.render(df_rec)
