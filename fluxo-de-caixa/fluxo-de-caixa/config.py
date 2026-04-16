@@ -29,7 +29,7 @@ MAPA_GRUPOS = {
     "Operacional": [
         "BÔNUS - TERCEIROS", "COMISSÕES SEGUROS", "CUSTO OPERACIONAL",
         "Descontos Recebidos", "EVENTOS CLIENTES", "Multas Pagas",
-        "REBATE COMISSÕES", "REPRESENTAÇÃO",
+        "REBATE COMISSÕES", "REPRESENTAÇÃO", "ÁGUA", "COLETA DE LIXO", "Outras Retenções sobre Pagamentos"
     ],
     "Tributário": [
         "COFINS", "COFINS Retido sobre Pagamentos", "CSLL",
