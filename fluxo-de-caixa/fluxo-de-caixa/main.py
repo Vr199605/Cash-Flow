@@ -29,7 +29,7 @@ from tabs import (
 st.markdown(CSS, unsafe_allow_html=True)
 
 # ---------------------------------------------------------------------------
-# SIDEBAR - FORMATO CHECKBOX
+# SIDEBAR - FORMATO CHECKBOX CONFORME SOLICITADO
 # ---------------------------------------------------------------------------
 with st.sidebar:
     st.markdown("<h2 style='color: #00D1FF;'>💎 DASHBOARD</h2>", unsafe_allow_html=True)
@@ -54,15 +54,14 @@ with st.sidebar:
 
     st.write("---")
 
-    # AJUSTE 1: Recebendo a 5ª variável (df_depara_globus) vinda do data.py
-    df_raw, df_rec_raw, df_cp_raw, df_depara_raw, df_depara_globus = load_and_process(tuple(empresas_selecionadas))
+    df_raw, df_rec_raw, df_cp_raw, df_depara_raw = load_and_process(tuple(empresas_selecionadas))
 
     if somar_contas_pagar:
         df_cp_temp = df_cp_raw.copy()
         df_cp_temp[COL_V] = df_cp_temp[COL_V].apply(lambda x: -abs(x))
         df_raw = pd.concat([df_raw, df_cp_temp], ignore_index=True)
 
-    # Lógica de Períodos
+    # Lógica de Períodos (Checkboxes)
     st.markdown("### 📅 PERÍODOS")
     lista_meses = sorted(
         set(df_raw['Mes_Ano'].unique()) | set(df_rec_raw['Mes_Ano'].unique()),
@@ -72,11 +71,12 @@ with st.sidebar:
     meses_sel = []
     with st.container(border=True):
         for mes in lista_meses:
+            # Mantém o último mês marcado por padrão como no código original
             default_m = (mes == lista_meses[-1]) if lista_meses else False
             if st.checkbox(mes, value=default_m, key=f"mes_{mes}"):
                 meses_sel.append(mes)
 
-    # Lógica de Grupos
+    # Lógica de Grupos (Checkboxes)
     st.markdown("### 📂 GRUPOS")
     grupos_disponiveis = sorted(df_raw['Grupo_Filtro'].unique())
     grupos_sel = []
@@ -86,10 +86,11 @@ with st.sidebar:
             if st.checkbox(grp, value=default_g, key=f"grp_{grp}"):
                 grupos_sel.append(grp)
 
-    # Lógica de Categorias
+    # Lógica de Categorias (Checkboxes com scroll)
     st.markdown("### 🏷️ CATEGORIAS")
     cats_disponiveis = sorted(df_raw[df_raw['Grupo_Filtro'].isin(grupos_sel)]['Categoria'].unique())
     cats_sel = []
+    # Altura fixa para criar o scroll conforme a imagem
     with st.container(height=300, border=True):
         for cat in cats_disponiveis:
             if st.checkbox(cat, value=True, key=f"cat_{cat}"):
@@ -110,7 +111,7 @@ with st.sidebar:
         )
 
 # ---------------------------------------------------------------------------
-# FILTROS APLICADOS
+# FILTROS APLICADOS (LÓGICA GLOBAL MANTIDA INTACTA)
 # ---------------------------------------------------------------------------
 df = df_raw.copy()
 if meses_sel:
@@ -167,14 +168,14 @@ for idx, row in agrupado_cp.iterrows():
 st.write("---")
 
 # ---------------------------------------------------------------------------
-# ABAS
+# ABAS - ATUALIZADAS (Remoção da aba de departamentos)
 # ---------------------------------------------------------------------------
 (
     tab1, tab2, tab3, tab4, tab5,
-    tab6, tab7, tab8, tab9, tab10,
+    tab6, tab7, tab8, tab9,
 ) = st.tabs([
     "📊 APRESENTAÇÃO", "💰 PARETO CASH IN", "🎯 PARETO CASH OUT", "🔥 CASH BURN", 
-    "📑 CONTAS A PAGAR", "📈 SALDO CAIXA", "🏢 DEPARTAMENTOS", "🧠 STORYTELLING", 
+    "📑 CONTAS A PAGAR", "📈 SALDO CAIXA", "🧠 STORYTELLING", 
     "📋 DADOS", "💰 RECEBIDOS"
 ])
 
@@ -191,11 +192,8 @@ with tab5:
 with tab6:
     analise_mensal.render(df, df_rec, meses_sel)
 with tab7:
-    # AJUSTE 2: Passando todos os 5 argumentos necessários para a função render
-    departamentos.render(df, df_depara_raw, df_depara_globus, meses_sel, empresas_selecionadas)
-with tab8:
     storytelling.render(df, df_rec, df, saidas_df, meses_sel)
-with tab9:
+with tab8:
     dados.render(df)
-with tab10:
+with tab9:
     recebidos.render(df_rec)
