@@ -25,7 +25,7 @@ def gerar_pdf_perfeito(df_sai, df_rec, meses: list, empresas_selecionadas: list)
         rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=40,
     )
     
-    styles = getSampleStyleSheet()
+    getSampleStyleSheet()
 
     # --- PALETA DE CORES E ESTILOS PREMIUM ---
     C_PRIMARIO = colors.HexColor("#00D1FF")
@@ -33,9 +33,13 @@ def gerar_pdf_perfeito(df_sai, df_rec, meses: list, empresas_selecionadas: list)
     C_TEXTO = colors.HexColor("#334155")
     C_BG = colors.HexColor("#F8FAFC")
 
+    # Estilos com alinhamento embutido para evitar o TypeError
     st_capa = ParagraphStyle('Capa', fontSize=32, textColor=C_SECUNDARIO, fontName='Helvetica-Bold', alignment=1, spaceAfter=20)
     st_tit = ParagraphStyle('Tit', fontSize=22, textColor=C_SECUNDARIO, fontName='Helvetica-Bold', spaceAfter=10)
     st_sub = ParagraphStyle('Sub', fontSize=10, textColor=colors.HexColor("#64748B"), spaceAfter=20, leading=14)
+    # Criamos um estilo específico para subtítulos centralizados na capa
+    st_sub_center = ParagraphStyle('SubCenter', parent=st_sub, alignment=1)
+    
     st_h1 = ParagraphStyle('H1', fontSize=16, textColor=C_SECUNDARIO, fontName='Helvetica-Bold', spaceBefore=15, spaceAfter=10)
     st_body = ParagraphStyle('Body', fontSize=10, textColor=C_TEXTO, leading=14, alignment=4)
     st_story = ParagraphStyle('Story', fontSize=11, textColor=C_SECUNDARIO, leading=16, leftIndent=15, borderPadding=10, backColor=C_BG)
@@ -52,16 +56,17 @@ def gerar_pdf_perfeito(df_sai, df_rec, meses: list, empresas_selecionadas: list)
         elementos.append(img)
     
     elementos.append(Spacer(1, 60))
-    elementos.append(Paragraph("RELATÓRIO EXECUTIVO DE", st_sub, alignment=1))
+    # Usando o estilo centralizado sem passar o argumento 'alignment' proibido
+    elementos.append(Paragraph("RELATÓRIO EXECUTIVO DE", st_sub_center))
     elementos.append(Paragraph("PERFORMANCE FINANCEIRA", st_capa))
     
     emp_str = " | ".join(sorted(empresas_selecionadas))
-    elementos.append(Paragraph(f"<b>UNIDADES:</b> {emp_str.upper()}", st_sub, alignment=1))
-    elementos.append(Paragraph(f"<b>PERÍODO:</b> {', '.join(meses)}", st_sub, alignment=1))
+    elementos.append(Paragraph(f"<b>UNIDADES:</b> {emp_str.upper()}", st_sub_center))
+    elementos.append(Paragraph(f"<b>PERÍODO:</b> {', '.join(meses)}", st_sub_center))
     
     elementos.append(Spacer(1, 150))
     elementos.append(HRFlowable(width="60%", thickness=1, color=C_PRIMARIO, hAlign='CENTER'))
-    elementos.append(Paragraph(f"Emitido em: {pd.Timestamp.now().strftime('%d/%m/%Y às %H:%M')}", st_sub, alignment=1))
+    elementos.append(Paragraph(f"Emitido em: {pd.Timestamp.now().strftime('%d/%m/%Y às %H:%M')}", st_sub_center))
     elementos.append(PageBreak())
 
     # --- PÁGINA 2: SUMÁRIO E STORYTELLING ---
@@ -72,18 +77,15 @@ def gerar_pdf_perfeito(df_sai, df_rec, meses: list, empresas_selecionadas: list)
 
     elementos.append(Paragraph("01. VISÃO ESTRATÉGICA (STORYTELLING)", st_h1))
     
-    # Narrativa Analítica
     tendencia = "positiva" if saldo > 0 else "de atenção"
     analise_texto = (
         f"A análise consolidada revela uma operação {tendencia}. Com uma receita total de {format_brl(v_in)} "
         f"e um custo operacional de {format_brl(v_out)}, a empresa encerra o período com um resultado líquido de "
-        f"{format_brl(saldo)}. A margem de {margem:.2f}% indica a eficiência na conversão de receita em caixa, "
-        f"servindo como indicador fundamental para decisões de expansão e controle de OPEX."
+        f"{format_brl(saldo)}. A margem de {margem:.2f}% indica a eficiência na conversão de receita em caixa."
     )
     elementos.append(Paragraph(analise_texto, st_story))
     elementos.append(Spacer(1, 20))
 
-    # I. KPIs em Cards (Tabela Estilizada)
     elementos.append(Paragraph("02. INDICADORES CHAVE DE PERFORMANCE", st_h1))
     data_kpi = [
         [Paragraph("<b>ENTRADAS TOTAIS</b>", st_body), Paragraph("<b>SAÍDAS TOTAIS</b>", st_body)],
@@ -99,8 +101,6 @@ def gerar_pdf_perfeito(df_sai, df_rec, meses: list, empresas_selecionadas: list)
         ('TEXTCOLOR', (0, 3), (0, 3), colors.HexColor("#15803D") if saldo > 0 else colors.red),
         ('FONTNAME', (0, 1), (-1, 1), 'Helvetica-Bold'),
         ('FONTNAME', (0, 3), (-1, 3), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 1), (-1, 1), 14),
-        ('FONTSIZE', (0, 3), (-1, 3), 14),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 15),
         ('TOPPADDING', (0, 0), (-1, -1), 15),
@@ -134,7 +134,6 @@ def gerar_pdf_perfeito(df_sai, df_rec, meses: list, empresas_selecionadas: list)
     ]))
     elementos.append(t_b)
 
-    # Pareto de Grupos
     elementos.append(Spacer(1, 20))
     elementos.append(Paragraph("04. EXPOSIÇÃO POR GRUPO DE DESPESA", st_h1))
     df_g = df_sai.groupby('Grupo_Filtro')[COL_V].sum().abs().reset_index().sort_values(by=COL_V, ascending=False)
@@ -153,10 +152,9 @@ def gerar_pdf_perfeito(df_sai, df_rec, meses: list, empresas_selecionadas: list)
     ]))
     elementos.append(t_g)
 
-    # TOP 10 (Se houver nomes)
     if 'Nome' in df_rec.columns:
         elementos.append(Spacer(1, 20))
-        elementos.append(Paragraph("05. CONCENTRAÇÃO DE RECEITA (TOP 10 CLIENTES/ORIGENS)", st_h1))
+        elementos.append(Paragraph("05. CONCENTRAÇÃO DE RECEITA (TOP 10)", st_h1))
         df_n = df_rec.groupby('Nome')[COL_V].sum().sort_values(ascending=False).head(10).reset_index()
         data_n = [["ORIGEM / CLIENTE", "VALOR TOTAL"]] + [[str(r[0]), format_brl(r[1])] for r in df_n.values]
         t_n = Table(data_n, colWidths=[340, 140])
@@ -168,10 +166,8 @@ def gerar_pdf_perfeito(df_sai, df_rec, meses: list, empresas_selecionadas: list)
         ]))
         elementos.append(t_n)
 
-    # RODAPÉ
     elementos.append(Spacer(1, 40))
     elementos.append(Paragraph("--- RELATÓRIO CONFIDENCIAL - USO INTERNO ---", st_footer))
-    elementos.append(Paragraph("Gerado por Inteligência de Dados Maldivas Seguros", st_footer))
 
     doc.build(elementos)
     buffer.seek(0)
