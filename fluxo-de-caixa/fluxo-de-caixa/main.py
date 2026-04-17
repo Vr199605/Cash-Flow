@@ -111,7 +111,7 @@ with st.sidebar:
         )
 
 # ---------------------------------------------------------------------------
-# FILTROS APLICADOS (LÓGICA GLOBAL MANTIDA INTACTA)
+# FILTROS APLICADOS (LÓGICA GLOBAL ATUALIZADA)
 # ---------------------------------------------------------------------------
 df = df_raw.copy()
 if meses_sel:
@@ -126,7 +126,15 @@ if meses_sel:
     df_rec = df_rec[df_rec['Mes_Ano'].isin(meses_sel)]
 
 saidas_df = df[df[COL_V] < 0]
-df_cp_f = df_cp_raw[df_cp_raw['Mes_Ano'].isin(meses_sel)] if meses_sel else df_cp_raw
+
+# ATUALIZAÇÃO: Aplicando Grupos e Categorias também ao Contas a Pagar
+df_cp_f = df_cp_raw.copy()
+if meses_sel:
+    df_cp_f = df_cp_f[df_cp_f['Mes_Ano'].isin(meses_sel)]
+if grupos_sel:
+    df_cp_f = df_cp_f[df_cp_f['Grupo_Filtro'].isin(grupos_sel)]
+if cats_sel:
+    df_cp_f = df_cp_f[df_cp_f['Categoria'].isin(cats_sel)]
 
 # ---------------------------------------------------------------------------
 # HEADER PRINCIPAL
