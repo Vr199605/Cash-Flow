@@ -182,7 +182,7 @@ st.write("---")
     tab1, tab2, tab3, tab4, tab5,
     tab6, tab7, tab8, tab9,
 ) = st.tabs([
-    "📊 APRESENTAÇÃO", "💰 PARETO CASH IN", "🎯 PARETO CASH OUT", "🔥 CASH BURN", 
+    "📊 APRESENTAÇÃO", "💰 PARETO CASH OUT", "🎯 PARETO CASH IN", "🔥 CASH BURN", 
     "📑 CONTAS A PAGAR", "📈 SALDO CAIXA", "🧠 STORYTELLING", 
     "📋 DADOS", "💰 RECEBIDOS"
 ])
