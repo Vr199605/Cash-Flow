@@ -4,5 +4,4 @@ plotly
 fpdf2
 openpyxl
 kaleido
-reportlab
 reportlab==4.2.0
