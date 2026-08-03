@@ -56,10 +56,6 @@ def load_and_process(empresas_selecionadas: tuple):
         df_cp['Empresa'] = emp
         list_cp.append(df_cp)
 
-        if emp == "Globus":
-            df_depara_globus = pd.read_csv(URLS[emp]["depara"])
-            df_depara_globus.columns = df_depara_globus.columns.str.strip()
-
     df_saidas = (
         pd.concat(list_s, ignore_index=True)
         .dropna(subset=['Data de pagamento'])
