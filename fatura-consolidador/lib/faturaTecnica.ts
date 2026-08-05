@@ -10,6 +10,7 @@
 // converte o resultado para o formato exato da aba "Analítico Completo".
 
 import { TEMPLATE_SHEETS } from "./template";
+import { normalizeHeader } from "./normalize";
 
 function s(v: unknown): string {
   return String(v ?? "").trim();
@@ -84,10 +85,20 @@ const KINSHIP_MAP: Record<string, string> = {
   "9": "OUTROS",
 };
 
-/** Detecta se a primeira linha da planilha é o cabeçalho de uma Fatura Técnica. */
+/**
+ * Detecta o cabeçalho de uma Fatura Técnica. Outros arquivos (ex.: "PART.
+ * DOS SEGURADOS", usado na Coparticipação) usam o mesmo rótulo genérico
+ * "TIPO DE REGISTRO/TIPO DE ARQUIVO" na primeira linha, então também
+ * confere o valor do campo TIPO DE ARQUIVO na linha de dados seguinte.
+ */
 export function detectFaturaTecnica(aoa: unknown[][]): boolean {
   const row0 = (aoa[0] ?? []).map((v) => s(v).toUpperCase());
-  return row0[0] === "TIPO DE REGISTRO" && row0[1] === "TIPO DE ARQUIVO";
+  const row1 = aoa[1] ?? [];
+  return (
+    row0[0] === "TIPO DE REGISTRO" &&
+    row0[1] === "TIPO DE ARQUIVO" &&
+    normalizeHeader(row1[1]).startsWith("FATURA")
+  );
 }
 
 export type FaturaTecnicaResult = {
