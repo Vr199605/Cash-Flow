@@ -1,10 +1,13 @@
 import * as XLSX from "xlsx";
 import { TEMPLATE_SHEETS } from "./template";
+import { detectFaturaTecnica, parseFaturaTecnicaAnalitico } from "./faturaTecnica";
 
 export type ParsedSheet = {
   name: string;
   headers: string[];
   rows: unknown[][];
+  /** true quando esta aba foi gerada por um parser especializado (ex.: Fatura Técnica) */
+  autoConverted?: boolean;
 };
 
 export type ParsedSource = {
@@ -17,7 +20,9 @@ export async function parseSourceFile(file: File): Promise<ParsedSource> {
   const buffer = await file.arrayBuffer();
   const wb = XLSX.read(buffer, { type: "array", cellDates: true });
 
-  const sheets: ParsedSheet[] = wb.SheetNames.map((name) => {
+  const sheets: ParsedSheet[] = [];
+
+  for (const name of wb.SheetNames) {
     const ws = wb.Sheets[name];
     const aoa = XLSX.utils.sheet_to_json<unknown[]>(ws, {
       header: 1,
@@ -25,10 +30,24 @@ export async function parseSourceFile(file: File): Promise<ParsedSource> {
       defval: "",
       blankrows: false,
     });
+
+    // Formatos com layout de registros conhecido (ex.: Fatura Técnica) geram
+    // uma aba já convertida para o formato do modelo, listada primeiro para
+    // ser selecionada por padrão.
+    if (detectFaturaTecnica(aoa)) {
+      const { headers, rows } = parseFaturaTecnicaAnalitico(aoa);
+      sheets.push({
+        name: `${name} → Analítico Completo (convertida automaticamente)`,
+        headers,
+        rows,
+        autoConverted: true,
+      });
+    }
+
     const [headerRow, ...rest] = aoa.length > 0 ? aoa : [[]];
     const headers = (headerRow ?? []).map((h) => String(h ?? "").trim());
-    return { name, headers, rows: rest };
-  });
+    sheets.push({ name, headers, rows: rest });
+  }
 
   return { fileName: file.name, sheets };
 }

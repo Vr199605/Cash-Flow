@@ -68,6 +68,9 @@ export default function Home() {
           Faturadas e Rateio). Envie, para cada aba, a planilha que tem os
           dados correspondentes — o sistema tenta casar as colunas
           automaticamente e você pode ajustar o mapeamento antes de gerar.
+          Arquivos no formato <strong>Fatura Técnica</strong> (com
+          registros por tipo 1/2/3/4) enviados na aba Analítico Completo
+          são reconhecidos e convertidos automaticamente.
         </p>
         <p className="mt-2 max-w-2xl rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300">
           🔒 Tudo acontece no seu navegador: os arquivos que você envia

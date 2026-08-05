@@ -134,6 +134,16 @@ export default function SheetSlot({
 
       {state.parsed && currentSheet && (
         <div className="border-t border-slate-100 px-4 py-3 dark:border-slate-800">
+          {currentSheet.autoConverted && (
+            <p className="mb-3 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800 dark:border-blue-900 dark:bg-blue-950 dark:text-blue-300">
+              ℹ️ Formato <strong>Fatura Técnica</strong> detectado e
+              convertido automaticamente. Sexo, estado civil e grau de
+              parentesco foram convertidos de código para texto; idade
+              calculada em relação à competência da fatura. CPF e IOF não
+              existem nesse arquivo e ficam em branco — TOTAL sai igual ao
+              VALOR DO LANÇAMENTO (sem IOF).
+            </p>
+          )}
           <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
             <div className="text-slate-600 dark:text-slate-300">
               <span className="font-medium">{state.parsed.fileName}</span>{" "}
