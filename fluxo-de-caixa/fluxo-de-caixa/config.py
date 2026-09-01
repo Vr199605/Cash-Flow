@@ -1,3 +1,4 @@
+import unicodedata
 import pandas as pd
 
 COL_V = 'Valor categoria/centro de custo'
@@ -7,171 +8,156 @@ def format_brl(val):
     return f"R$ {val:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
+# Função para limpar e normalizar qualquer texto:
+# Transforma: "Serviços T.I." -> "SERVICOS TI"
+# Transforma: "DESPESAS DE CARTÃO DE CRÉDITO" -> "DESPESAS DE CARTAO DE CREDITO"
+def normalizar_texto(texto):
+    if pd.isna(texto):
+        return ""
+    texto_str = str(texto).strip()
+    # Remove caracteres especiais/invisíveis comuns de planilhas
+    texto_str = texto_str.replace("\xa0", " ")
+    # Remove acentos
+    nfkd = unicodedata.normalize("NFKD", texto_str)
+    sem_acento = "".join([c for c in nfkd if not unicodedata.combining(c)])
+    # Remove pontuações simples e padroniza espaços
+    sem_pontuacao = (
+        sem_acento.replace(".", " ")
+        .replace("/", " ")
+        .replace("-", " ")
+        .replace("_", " ")
+    )
+    return " ".join(sem_pontuacao.upper().split())
+
+
 MAPA_GRUPOS = {
     "Administrativo": [
         "ALUGUEL",
         "COMPRA DE ATIVO FIXO",
-        "CONDOMÍNIO",
+        "CONDOMINIO",
         "COWORKING",
         "CUSTO OPERACIONAL",
         "DESPESAS FINANCEIRAS",
-        "DESPESAS DE CARTÃO DE CRÉDITO",
-        "ENERGIA ELÉTRICA",
+        "DESPESAS DE CARTAO DE CREDITO",
+        "CARTAO DE CREDITO",
+        "ENERGIA ELETRICA",
         "ESTORNO",
-        "EVENTOS FUNCIONÁRIOS",
-        "MANUTENÇÃO ESCRITÓRIO",
+        "EVENTOS FUNCIONARIOS",
+        "MANUTENCAO ESCRITORIO",
         "MATERIAIS DE TI",
         "MATERIAL DE COPA",
-        "MATERIAL DE ESCRITÓRIO",
+        "MATERIAL DE ESCRITORIO",
         "MATERIAL DE LIMPEZA",
-        "Multas Pagas",
-        "LOCOMOÇÃO",
+        "MULTAS PAGAS",
+        "LOCOMOCAO",
         "OUTRAS DESPESAS",
-        "PAGAMENTO DE EMPRÉSTIMO",
-        "REPRESENTAÇÃO",
+        "PAGAMENTO DE EMPRESTIMO",
+        "REPRESENTACAO",
         "REEMBOLSO",
         "SEGUROS",
-        "SERVIÇOS CONTÁBEIS",
-        "SERVIÇOS CONTRATADOS",
-        "SERVIÇOS DE E-MAIL",
-        "SERVIÇOS DE ENTREGA",
-        "SERVIÇOS DE PUBLICIDADE",
-        "SERVIÇOS JURÍDICOS",
-        "SERVIÇOS TI",
-        "SERVIÇOS T.I.",
+        "SERVICOS CONTABEIS",
+        "SERVICOS CONTRATADOS",
+        "SERVICOS DE E-MAIL",
+        "SERVICOS DE ENTREGA",
+        "SERVICOS DE PUBLICIDADE",
+        "SERVICOS JURIDICOS",
+        "SERVICOS TI",
+        "SERVICOS T.I.",
         "SISTEMAS",
-        "TAXAS E CONTRIBUIÇÕES",
+        "TAXAS E CONTRIBUICOES",
         "TELEFONIA/INTERNET",
         "TELEFONE E INTERNET",
+        "TELEFONIA",
+        "INTERNET",
         "TREINAMENTOS",
-        "VAGAS GARAGEM - SÓCIOS",
+        "VAGAS GARAGEM - SOCIOS",
     ],
     "Despesa de pessoal": [
-        "13º SALÁRIO",
-        "ADIANTAMENTO AO FUNCIONÁRIO",
-        "ANTECIPAÇÃO DE RESULTADOS",
+        "13 SALARIO",
+        "13º SALARIO",
+        "ADIANTAMENTO AO FUNCIONARIO",
+        "ANTECIPACAO DE RESULTADOS",
         "DIVIDENDOS",
-        "ASSISTÊNCIA MÉDICA",
-        "ASSISTÊNCIA ODONTO",
-        "BÔNUS CLT",
-        "BÔNUS PERFORMANCE - G",
+        "ASSISTENCIA MEDICA",
+        "ASSISTENCIA ODONTO",
+        "BONUS CLT",
+        "BONUS PERFORMANCE - G",
         "CONSULTORIA ESPECIALIZADA - G",
         "CONSULTORIA ESPECIALIZADA - TI",
         "DESPESA EVENTUAL DE PESSOAL",
         "DESPESAS VIAGEM",
         "DESPESAS COM VIAGENS",
-        "ESTAGIÁRIO FOLHA",
+        "DESPESA COM VIAGEM",
+        "VIAGENS",
+        "VIAGEM",
+        "ESTAGIARIO FOLHA",
         "EXAMES OCUPACIONAIS",
-        "FÉRIAS",
+        "FERIAS",
         "FGTS",
-        "GRATIFICAÇÕES CLT",
-        "GRATIFICAÇÕES PJ - G",
+        "GRATIFICACOES CLT",
+        "GRATIFICACOES PJ - G",
         "INSS",
         "IRRF",
         "PRO LABORE",
-        "RESCISÃO",
-        "SALÁRIOS CLT",
+        "RESCISAO",
+        "SALARIOS CLT",
         "SEGURO DE VIDA",
-        "SERVIÇOS CONTRATADOS",
         "VA/VR",
         "VT",
     ],
     "Operacional": [
-        "BÔNUS - TERCEIROS",
-        "COMISSÕES SEGUROS",
-        "CUSTO OPERACIONAL",
-        "Descontos Recebidos",
+        "BONUS - TERCEIROS",
+        "COMISSOES SEGUROS",
+        "DESCONTOS RECEBIDOS",
         "EVENTOS CLIENTES",
-        "Multas Pagas",
-        "REBATE COMISSÕES",
-        "REPRESENTAÇÃO",
-        "REEMBOLSO",
-        "ÁGUA",
+        "REBATE COMISSOES",
+        "AGUA",
         "COLETA DE LIXO",
-        "Outras Retenções sobre Pagamentos",
+        "OUTRAS RETENCOES SOBRE PAGAMENTOS",
     ],
     "Tributário": [
         "COFINS",
-        "COFINS Retido sobre Pagamentos",
+        "COFINS RETIDO SOBRE PAGAMENTOS",
         "CSLL",
-        "CSLL Retido sobre Pagamentos",
-        "DESPESAS FINANCEIRAS",
-        "ESTORNO",
-        "INSS Retido sobre Pagamentos",
+        "CSLL RETIDO SOBRE PAGAMENTOS",
+        "INSS RETIDO SOBRE PAGAMENTOS",
         "IPTU",
         "IRPJ",
-        "IRPJ Retido sobre Pagamentos",
+        "IRPJ RETIDO SOBRE PAGAMENTOS",
         "ISS",
-        "ISS Retido sobre Pagamentos",
-        "Juros Pagos",
-        "Multas Pagas",
-        "Pagamento de ISS Retido",
+        "ISS RETIDO SOBRE PAGAMENTOS",
+        "JUROS PAGOS",
+        "PAGAMENTO DE ISS RETIDO",
         "PARCELAMENTO RECEITA FEDERAL",
         "PERT CSLL",
         "PERT IRPJ",
         "PERT IRRF",
         "PERT SN",
         "PIS",
-        "PIS Retido sobre Pagamentos",
+        "PIS RETIDO SOBRE PAGAMENTOS",
     ],
 }
 
-# Inverte o mapa normalizando para facilitar a busca rápida e insensível a maiúsculas/minúsculas
-DE_PARA_CATEGORIAS = {
-    item.strip().upper(): grupo
+# Cria um dicionário normalizado com busca exata e busca por contenção
+DE_PARA_NORMALIZADO = {
+    normalizar_texto(item): grupo
     for grupo, itens in MAPA_GRUPOS.items()
     for item in itens
 }
 
 
 def obter_grupo(categoria):
-    if pd.isna(categoria):
+    cat_norm = normalizar_texto(categoria)
+    if not cat_norm:
         return "Outros"
-    cat_normalizada = str(categoria).strip().upper()
-    return DE_PARA_CATEGORIAS.get(cat_normalizada, "Outros")
 
+    # 1. Tenta correspondência exata normalizada
+    if cat_norm in DE_PARA_NORMALIZADO:
+        return DE_PARA_NORMALIZADO[cat_norm]
 
-URLS = {
-    "Globus": {
-        "s": "https://docs.google.com/spreadsheets/d/e/2PACX-1vT7KV7hi8lJHEleaPoPyAKWo7ChUTlLuorbLX9v4aZGXPKI6aeudpF06eUc60hmIPX8Pkz5BrZOhc1G/pub?gid=1959056339&single=true&output=csv",
-        "r": "https://docs.google.com/spreadsheets/d/e/2PACX-1vT7KV7hi8lJHEleaPoPyAKWo7ChUTlLuorbLX9v4aZGXPKI6aeudpF06eUc60hmIPX8Pkz5BrZOhc1G/pub?gid=58078527&single=true&output=csv",
-        "cp": "https://docs.google.com/spreadsheets/d/e/2PACX-1vT7KV7hi8lJHEleaPoPyAKWo7ChUTlLuorbLX9v4aZGXPKI6aeudpF06eUc60hmIPX8Pkz5BrZOhc1G/pub?gid=2118565092&single=true&output=csv",
-        "depara": "https://docs.google.com/spreadsheets/d/e/2PACX-1vT7KV7hi8lJHEleaPoPyAKWo7ChUTlLuorbLX9v4aZGXPKI6aeudpF06eUc60hmIPX8Pkz5BrZOhc1G/pub?gid=1181327025&single=true&output=csv",
-        "depara_globus": "https://docs.google.com/spreadsheets/d/e/2PACX-1vT7KV7hi8lJHEleaPoPyAKWo7ChUTlLuorbLX9v4aZGXPKI6aeudpF06eUc60hmIPX8Pkz5BrZOhc1G/pub?gid=325548620&single=true&output=csv",
-    },
-    "MGL": {
-        "s": "https://docs.google.com/spreadsheets/d/e/2PACX-1vT7KV7hi8lJHEleaPoPyAKWo7ChUTlLuorbLX9v4aZGXPKI6aeudpF06eUc60hmIPX8Pkz5BrZOhc1G/pub?gid=1774273194&single=true&output=csv",
-        "r": "https://docs.google.com/spreadsheets/d/e/2PACX-1vT7KV7hi8lJHEleaPoPyAKWo7ChUTlLuorbLX9v4aZGXPKI6aeudpF06eUc60hmIPX8Pkz5BrZOhc1G/pub?gid=748812022&single=true&output=csv",
-        "cp": "https://docs.google.com/spreadsheets/d/e/2PACX-1vT7KV7hi8lJHEleaPoPyAKWo7ChUTlLuorbLX9v4aZGXPKI6aeudpF06eUc60hmIPX8Pkz5BrZOhc1G/pub?gid=379762787&single=true&output=csv",
-    },
-}
+    # 2. Tenta correspondência parcial (se o texto contiver termos-chave)
+    for chave, grupo in DE_PARA_NORMALIZADO.items():
+        if len(chave) > 3 and (chave in cat_norm or cat_norm in chave):
+            return grupo
 
-CSS = """
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap');
-.main { background-color: #0B0E14; }
-div[data-testid="stMetricValue"] { color: #00D1FF; font-weight: 700; font-size: 1.8rem !important; }
-div[data-testid="stMetricLabel"] { color: #94A3B8; font-weight: 400; }
-div[data-testid="metric-container"] {
-    background: rgba(30, 41, 59, 0.5);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    padding: 25px;
-    border-radius: 15px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-}
-.stTabs [data-baseweb="tab-list"] { gap: 8px; background-color: transparent; }
-.stTabs [data-baseweb="tab"] {
-    height: 45px;
-    background-color: #1E293B;
-    border-radius: 8px 8px 0 0;
-    color: #94A3B8;
-    padding: 10px 20px;
-    font-weight: 600;
-}
-.stTabs [aria-selected="true"] {
-    background-color: #00D1FF !important;
-    color: #0B0E14 !important;
-}
-.css-1d391kg { background-color: #111827; }
-</style>
-"""
+    return "Outros"
