@@ -1,3 +1,5 @@
+import pandas as pd
+
 COL_V = 'Valor categoria/centro de custo'
 
 
@@ -13,6 +15,7 @@ MAPA_GRUPOS = {
         "COWORKING",
         "CUSTO OPERACIONAL",
         "DESPESAS FINANCEIRAS",
+        "DESPESAS DE CARTÃO DE CRÉDITO",
         "ENERGIA ELÉTRICA",
         "ESTORNO",
         "EVENTOS FUNCIONÁRIOS",
@@ -35,9 +38,11 @@ MAPA_GRUPOS = {
         "SERVIÇOS DE PUBLICIDADE",
         "SERVIÇOS JURÍDICOS",
         "SERVIÇOS TI",
+        "SERVIÇOS T.I.",
         "SISTEMAS",
         "TAXAS E CONTRIBUIÇÕES",
         "TELEFONIA/INTERNET",
+        "TELEFONE E INTERNET",
         "TREINAMENTOS",
         "VAGAS GARAGEM - SÓCIOS",
     ],
@@ -54,6 +59,7 @@ MAPA_GRUPOS = {
         "CONSULTORIA ESPECIALIZADA - TI",
         "DESPESA EVENTUAL DE PESSOAL",
         "DESPESAS VIAGEM",
+        "DESPESAS COM VIAGENS",
         "ESTAGIÁRIO FOLHA",
         "EXAMES OCUPACIONAIS",
         "FÉRIAS",
@@ -109,6 +115,21 @@ MAPA_GRUPOS = {
         "PIS Retido sobre Pagamentos",
     ],
 }
+
+# Inverte o mapa normalizando para facilitar a busca rápida e insensível a maiúsculas/minúsculas
+DE_PARA_CATEGORIAS = {
+    item.strip().upper(): grupo
+    for grupo, itens in MAPA_GRUPOS.items()
+    for item in itens
+}
+
+
+def obter_grupo(categoria):
+    if pd.isna(categoria):
+        return "Outros"
+    cat_normalizada = str(categoria).strip().upper()
+    return DE_PARA_CATEGORIAS.get(cat_normalizada, "Outros")
+
 
 URLS = {
     "Globus": {
